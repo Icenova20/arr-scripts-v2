@@ -1,0 +1,145 @@
+#!/usr/bin/with-contenv bash
+scriptVersion="1.3"
+scriptName="QueueCleaner"
+dockerLogPath="/config/logs"
+
+settings () {
+  log "Import Script Settings..."
+  source /config/settings.conf
+}
+
+verifyConfig () {
+
+	if [ "$enableQueueCleaner" != "true" ]; then
+		log "Script is not enabled, enable by setting enableQueueCleaner to \"true\" by modifying the \"/config/extended.conf\" config file..."
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
+}
+
+logfileSetup () {
+  logFileName="$scriptName-$(date +"%Y_%m_%d_%I_%M_%p").txt"
+
+  if [ ! -d "$dockerLogPath" ]; then
+    mkdir -p "$dockerLogPath"
+    chmod 777 "$dockerLogPath"
+  fi
+
+  if find "$dockerLogPath" -type f -iname "$scriptName-*.txt" | read; then
+    # Keep only the last 5 log files for 6 active log files at any given time...
+    rm -f $(ls -1t $dockerLogPath/$scriptName-* | tail -n +5)
+    # delete log files older than 5 days
+    find "$dockerLogPath" -type f -iname "$scriptName-*.txt" -mtime +5 -delete
+  fi
+  
+  if [ ! -f "$dockerLogPath/$logFileName" ]; then
+    echo "" > "$dockerLogPath/$logFileName"
+    chmod 666 "$dockerLogPath/$logFileName"
+  fi
+}
+
+log () {
+  m_time=`date "+%F %T"`
+  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+}
+
+
+QueueCleanerProcess () {
+  arrApp="$1"
+
+  # Sonarr
+  if [ "$arrApp" = "sonarr" ]; then
+    arrUrl="$sonarrUrl"
+    arrApiKey="$sonarrApiKey"
+    arrApiVersion="v3"
+    arrQueueData="$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pagesize=200&sortDirection=descending&sortKey=progress&includeUnknownSeriesItems=true&apikey=${arrApiKey}" | jq -r .records[])"
+  fi
+  
+
+  # Radarr
+  if [ "$arrApp" = "radarr" ]; then
+    arrUrl="$radarrUrl"
+    arrApiKey="$radarrApiKey"
+    arrApiVersion="v3"
+    arrQueueData="$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pagesize=200&sortDirection=descending&sortKey=progress&includeUnknownMovieItems=true&apikey=${arrApiKey}" | jq -r .records[])"
+  fi
+
+  # Lidarr
+  if [ "$arrApp" = "lidarr" ]; then
+    arrUrl="$lidarrUrl"
+    arrApiKey="$lidarrApiKey"
+    arrApiVersion="v1"
+    arrQueueData="$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pagesize=200&sortDirection=descending&sortKey=progress&includeUnknownArtistItems=true&apikey=${arrApiKey}" | jq -r .records[])"
+  fi
+
+  arrQueueIdCount=$(echo "$arrQueueData" | jq -r ".id" | wc -l)
+  arrQueueCompletedIds=$(echo "$arrQueueData" | jq -r 'select(.status=="completed") | select(.trackedDownloadStatus=="warning") | .id')
+  arrQueueIdsCompletedCount=$(echo "$arrQueueData" | jq -r 'select(.status=="completed") | select(.trackedDownloadStatus=="warning") | .id' | wc -l)
+  arrQueueFailedIds=$(echo "$arrQueueData" | jq -r 'select(.status=="failed") | .id')
+  arrQueueIdsFailedCount=$(echo "$arrQueueData" | jq -r 'select(.status=="failed") | .id' | wc -l)
+  arrQueueStalledIds=$(echo "$arrQueueData" | jq -r 'select(.status=="stalled") | .id')
+  arrQueueIdsStalledount=$(echo "$arrQueueData" | jq -r 'select(.status=="stalled") | .id' | wc -l)
+  arrQueuedIds=$(echo "$arrQueueCompletedIds"; echo "$arrQueueFailedIds"; echo "$arrQueueStalledIds")
+  arrQueueIdsCount=$(( $arrQueueIdsCompletedCount + $arrQueueIdsFailedCount + $arrQueueIdsStalledount ))
+
+  # Debugging
+  #echo "$arrQueueIdsCount :: $arrQueueIdsCompletedCount + $arrQueueIdsFailedCount + $arrQueueIdsStalledount"
+  #echo "$arrQueueCompletedIds"
+  #echo "$arrQueueFailedIds"
+  #echo "$arrQueueStalledIds"
+  #exit
+
+  if [ $arrQueueIdsCount -eq 0 ]; then
+    log "$arrApp :: No items in queue to clean up"
+  else
+    for queueId in $(echo $arrQueuedIds); do
+      arrQueueItemData="$(echo "$arrQueueData" | jq -r "select(.id==$queueId)")"
+      arrQueueItemTitle="$(echo "$arrQueueItemData" | jq -r .title)"
+      if [ "$arrApp" == "sonarr" ]; then
+        arrEpisodeId="$(echo "$arrQueueItemData" | jq -r .episodeId)"
+        arrEpisodeData="$(curl -s "$arrUrl/api/v3/episode/$arrEpisodeId?apikey=${arrApiKey}")"
+        arrEpisodeTitle="$(echo "$arrEpisodeData" | jq -r .title)"
+        arrEpisodeSeriesId="$(echo "$arrEpisodeData" | jq -r .seriesId)"
+        if [ "$arrEpisodeTitle" == "TBA" ]; then
+          log "$arrApp :: $queueId ($arrQueueItemTitle) :: ERROR :: Episode title is \"$arrEpisodeTitle\" and prevents auto-import, refreshing series..."
+          refreshSeries=$(curl -s "$arrUrl/api/$arrApiVersion/command" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $arrApiKey" --data-raw "{\"name\":\"RefreshSeries\",\"seriesId\":$arrEpisodeSeriesId}")
+          continue
+        fi
+      fi
+      log "$arrApp :: $queueId ($arrQueueItemTitle) :: Removing Failed Queue Item from $arrName..."
+      deleteItem=$(curl -sX DELETE "$arrUrl/api/$arrApiVersion/queue/$queueId?removeFromClient=$removeFromClient&blocklist=$blocklist&skipRedownload=$skipRedownload&changeCategory=false&apikey=${arrApiKey}")
+    done
+  fi
+}
+
+for (( ; ; )); do
+  let i++
+  logfileSetup
+  log "Starting..."
+  settings
+  verifyConfig
+  if [ ! -z "$radarrUrl" ]; then
+    if [ ! -z "$radarrApiKey" ]; then
+      QueueCleanerProcess "radarr"
+    else
+      log "ERROR :: Skipping Radarr, missing API Key..."
+    fi
+  else
+    log "ERROR :: Skipping Radarr, missing URL..."
+  fi
+  if [ ! -z "$sonarrUrl" ]; then
+    if [ ! -z "$sonarrApiKey" ]; then
+      QueueCleanerProcess "sonarr"
+    else
+      log "ERROR :: Skipping Sonarr, missing API Key..."
+    fi
+  else
+    log "ERROR :: Skipping Sonarr, missing URL..."
+  fi
+  log "Sleeping $queueCleanerScriptInterval..."
+  sleep $queueCleanerScriptInterval
+done
+
+exit
