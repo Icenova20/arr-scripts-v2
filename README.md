@@ -41,7 +41,8 @@ services:
 4. Start or Restart the container
 
 ## Monitoring
-Logs will be generated for each script and be located in the `/config/logs` folder.
+- Logs will be generated for each script and be located in the `/config/logs` folder.
+- You can also monitor the contairs logs to see the scripts logging output live...
 
 ## Support Info
 
