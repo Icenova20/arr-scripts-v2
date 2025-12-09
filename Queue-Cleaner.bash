@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.3"
+scriptVersion="1.4"
 scriptName="QueueCleaner"
 dockerLogPath="/config/logs"
 
@@ -90,18 +90,7 @@ QueueCleanerProcess () {
     for queueId in $(echo $arrQueuedIds); do
       arrQueueItemData="$(echo "$arrQueueData" | jq -r "select(.id==$queueId)")"
       arrQueueItemTitle="$(echo "$arrQueueItemData" | jq -r .title)"
-      if [ "$arrApp" == "sonarr" ]; then
-        arrEpisodeId="$(echo "$arrQueueItemData" | jq -r .episodeId)"
-        arrEpisodeData="$(curl -s "$arrUrl/api/v3/episode/$arrEpisodeId?apikey=${arrApiKey}")"
-        arrEpisodeTitle="$(echo "$arrEpisodeData" | jq -r .title)"
-        arrEpisodeSeriesId="$(echo "$arrEpisodeData" | jq -r .seriesId)"
-        if [ "$arrEpisodeTitle" == "TBA" ]; then
-          log "$arrApp :: $queueId ($arrQueueItemTitle) :: ERROR :: Episode title is \"$arrEpisodeTitle\" and prevents auto-import, refreshing series..."
-          refreshSeries=$(curl -s "$arrUrl/api/$arrApiVersion/command" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $arrApiKey" --data-raw "{\"name\":\"RefreshSeries\",\"seriesId\":$arrEpisodeSeriesId}")
-          continue
-        fi
-      fi
-      log "$arrApp :: $queueId ($arrQueueItemTitle) :: Removing Failed Queue Item from $arrName..."
+	  log "$arrApp :: $queueId ($arrQueueItemTitle) :: Removing Failed Queue Item from $arrName..."
       deleteItem=$(curl -sX DELETE "$arrUrl/api/$arrApiVersion/queue/$queueId?removeFromClient=$removeFromClient&blocklist=$blocklist&skipRedownload=$skipRedownload&changeCategory=false&apikey=${arrApiKey}")
     done
   fi
