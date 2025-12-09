@@ -84,13 +84,6 @@ QueueCleanerProcess () {
   arrQueuedIds=$(echo "$arrQueueCompletedIds"; echo "$arrQueueFailedIds"; echo "$arrQueueStalledIds")
   arrQueueIdsCount=$(( $arrQueueIdsCompletedCount + $arrQueueIdsFailedCount + $arrQueueIdsStalledount ))
 
-  # Debugging
-  #echo "$arrQueueIdsCount :: $arrQueueIdsCompletedCount + $arrQueueIdsFailedCount + $arrQueueIdsStalledount"
-  #echo "$arrQueueCompletedIds"
-  #echo "$arrQueueFailedIds"
-  #echo "$arrQueueStalledIds"
-  #exit
-
   if [ $arrQueueIdsCount -eq 0 ]; then
     log "$arrApp :: No items in queue to clean up"
   else
