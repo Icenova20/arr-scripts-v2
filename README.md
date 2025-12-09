@@ -2,7 +2,9 @@
 
 ## Installation
 
-### docker-compose
+### Container Setup
+
+#### docker-compose (example)
 ```
 services:
   arr-scripts:
@@ -18,6 +20,12 @@ services:
       - /path/to/arr-scripts/config/custom-cont-init.d:/custom-cont-init.d #optional
     restart: unless-stopped
 ```
+
+### unraid (example)
+<img width="777" height="605" alt="image" src="https://github.com/user-attachments/assets/da747920-57f8-42fc-b77d-26910fa9b068" />
+
+### Script Download and Configuration
+
 1. Download [settings.conf](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/settings.conf) and place it into: `/config` folder
 2. Download any of the following scripts and place them into `/custom-services.d` folder
    - [Queue-Cleaner.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Queue-Cleaner.bash)
