@@ -48,7 +48,7 @@ services:
 
 ## Monitoring
 - Logs will be generated for each script and be located in the `/config/logs` folder.
-- You can also monitor the contairs logs to see the scripts logging output live...
+- You can also monitor the containers logs to see the scripts logging output live...
 
 ## Support Info
 <strong>Scripts are provided as-is...</strong>
