@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-scriptVersion="1.0"
+scriptVersion="1.1"
 scriptName="Sonarr-Invalid-Series-Auto-Cleaner"
 dockerLogPath="/config/logs"
 
 settings () {
-  log "Import Script Settings..."
-  source /config/settings.conf
+  log "Import Script $1 Settings..."
+  source "$1"
   arrUrl="$sonarrUrl"
   arrApiKey="$sonarrApiKey"
 }
@@ -79,8 +79,19 @@ InvalidAutoCleanerProcess () {
 for (( ; ; )); do
 	let i++
 	logfileSetup
-    log "Starting..."
-    settings
+  log "Starting..."
+  confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+  confFileCount=$(echo "$confFiles" | wc -l)
+
+  if [ -z "$confFiles" ]; then
+      log "ERROR :: No config files found, exiting..."
+      exit
+  fi
+
+  for f in $confFiles; do
+    count=$(($count+1))
+    log "Processing \"$f\" config file"
+    settings "$f"
     verifyConfig
     if [ ! -z "$arrUrl" ]; then
         if [ ! -z "$arrApiKey" ]; then
@@ -91,6 +102,7 @@ for (( ; ; )); do
     else
         log "ERROR :: Skipping Sonarr, missing URL..."
     fi
+  done
 	log "Script sleeping for $invalidSeriesAutoCleanerScriptInterval..."
 	sleep $invalidSeriesAutoCleanerScriptInterval
 done
