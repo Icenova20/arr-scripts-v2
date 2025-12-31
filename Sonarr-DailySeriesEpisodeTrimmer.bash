@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-scriptVersion="1.2"
+scriptVersion="1.3"
 scriptName="Sonarr-DailySeriesEpisodeTrimmer"
 dockerLogPath="/config/logs"
 
@@ -35,6 +35,7 @@ logfileSetup () {
 log () {
   m_time=`date "+%F %T"`
   echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -135,8 +136,6 @@ DailySeriesTrimmerProcess () {
 for (( ; ; )); do
     let i++
     logfileSetup
-    touch "$dockerPath/$logFileName"
-    exec &> >(tee -a "$dockerPath/$logFileName")
     log "Starting..."
     confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
     confFileCount=$(echo "$confFiles" | wc -l)
