@@ -45,6 +45,9 @@ services:
      - Script requires mapping a volume that matches Sonarr's configuration for stored files...
    - [Sonarr-DailySeriesEpisodeTrimmer.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Sonarr-DailySeriesEpisodeTrimmer.bash)
      - Script Unmonitors and Deletes files for series that are considered "Daily" or tagged as "daily"... Useuful for only keeping the latest episodes and not all episodes of a daily type of show...
+   - [Lidarr-MusicAutomator.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Lidarr-MusicAutomator.bash)
+     - Script performs Lidarr wanted Missing and Cutoff searches, downloads matches it finds using a popular CLI tool and notifies Lidarr to import them.
+     - Important to map volumes correctly in both containers or imports will simply fail... and not be so automated :(
 3. Modify edit [settings.conf](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/settings.conf) (`/config/settings.conf`) with your appropriate settings
    - Support added for multiple `.conf` files to support multiple instances... Create/duplicate the settings.conf file as many times as needed to allow the scripts to run against multiple instances. Do not use spaces in the file name.
 5. Start or Restart the container
