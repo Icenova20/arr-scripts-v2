@@ -1,10 +1,11 @@
-#!/bin/bash
-scriptVersion="1.0"
+#!/usr/bin/with-contenv bash
+scriptVersion="1.3"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
 searchOrder="releaseDate"
 searchDirection="descending"
+deemixFolder="/root/.config/deemix"
 
 settings () {
   log "Import Script $1 Settings..."
@@ -47,17 +48,27 @@ ArlSetup () {
         log "ERROR :: Exiting..."
         exit
     fi
-    if [ -d "/config/config" ]; then
+    if [ -d "$deemixFolder" ]; then
         log "Creating Deemix Config folder"
-        mkdir -p "/config/config"
+        mkdir -p "$deemixFolder"
     fi
-    if [ -f "/config/config/.arl" ]; then
+    if [ -f "$deemixFolder/.arl" ]; then
         log "Deleting ARL"
-        rm "/config/config/.arl"
+        rm "$deemixFolder/.arl"
     fi
-    if [ ! -f "/config/config/.arl" ]; then
+    if [ ! -f "$deemixFolder/.arl" ]; then
         log "Creating ARL file"
-        echo -n "$arl" > "/config/config/.arl"
+        echo -n "$arl" > "$deemixFolder/.arl"
+        chmod 777 "$deemixFolder/.arl"
+    fi
+
+    if [ -f "/config/config/config.json" ]; then
+        if [ -f "$deemixFolder/config.json" ]; then
+          log "Importing custom deemix config"
+          rm "$deemixFolder/config.json"
+          cp "/config/config/config.json" "$deemixFolder/config.json"
+          chmod 777 "$deemixFolder/config.json"
+        fi
     fi
 }
 
@@ -141,7 +152,11 @@ SearchDeezerAlbums () {
         deezerAlbumReleaseDate="$(echo "$deezerAlbumData" | jq -r .release_date)"
         deezerAlbumYear="${deezerAlbumReleaseDate:0:4}"
         downloadAlbumFolderName="$lidarrAlbumArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
-        diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null)      
+        if echo "${lidarrAlbumTitleClean,,}" | grep "${deezerAlbumTitleClean,,}" | read; then
+          diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null) 
+        else
+          continue
+        fi    
         if [ $diff = 0 ]; then
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: $deezerAlbumTitleClean vs $lidarrAlbumTitleClean :: Explicit Lyrics ($deezerExplicitLyrics) :: diff $diff :: Match Found!"
 
