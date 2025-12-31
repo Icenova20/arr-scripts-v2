@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-scriptVersion="1.1"
+scriptVersion="1.2"
 scriptName="Sonarr-DailySeriesEpisodeTrimmer"
 dockerLogPath="/config/logs"
 
 settings () {
-  log "Import Script Settings..."
-  source /config/settings.conf
+  log "Import Script $1 Settings..."
+  source "$1"
   arrUrl="$sonarrUrl"
   arrApiKey="$sonarrApiKey"
 }
+
 
 logfileSetup () {
   logFileName="$scriptName-$(date +"%Y_%m_%d_%I_%M_%p").txt"
@@ -132,22 +133,34 @@ DailySeriesTrimmerProcess () {
 }
 
 for (( ; ; )); do
-	let i++
-	settings
+    let i++
     logfileSetup
     touch "$dockerPath/$logFileName"
     exec &> >(tee -a "$dockerPath/$logFileName")
     log "Starting..."
-    verifyConfig
-    if [ ! -z "$arrUrl" ]; then
-        if [ ! -z "$arrApiKey" ]; then
-            DailySeriesTrimmerProcess
-        else
-            log "ERROR :: Skipping Sonarr, missing API Key..."
-        fi
-    else
-        log "ERROR :: Skipping Sonarr, missing URL..."
+    confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+    confFileCount=$(echo "$confFiles" | wc -l)
+
+    if [ -z "$confFiles" ]; then
+        log "ERROR :: No config files found, exiting..."
+        exit
     fi
+
+    for f in $confFiles; do
+        count=$(($count+1))
+        log "Processing \"$f\" config file"
+        settings "$f"
+        verifyConfig
+        if [ ! -z "$arrUrl" ]; then
+            if [ ! -z "$arrApiKey" ]; then
+                DailySeriesTrimmerProcess
+            else
+                log "ERROR :: Skipping Sonarr, missing API Key..."
+            fi
+        else
+            log "ERROR :: Skipping Sonarr, missing URL..."
+        fi
+    done
 	log "Script sleeping for $dailySeriesEpisodeTrimmerScriptInterval..."
 	sleep $dailySeriesEpisodeTrimmerScriptInterval
 done
