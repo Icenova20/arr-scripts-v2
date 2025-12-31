@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-scriptVersion="1.1"
+scriptVersion="1.2"
 scriptName="Sonarr-UnmappedFolderCleaner"
 dockerLogPath="/config/logs"
 
 settings () {
-  log "Import Script Settings..."
-  source /config/settings.conf
+  log "Import Script $1 Settings..."
+  source "$1"
   arrUrl="$sonarrUrl"
   arrApiKey="$sonarrApiKey"
 }
@@ -76,17 +76,29 @@ for (( ; ; )); do
 	let i++
 	logfileSetup
 	log "Starting..."
-	settings
-	verifyConfig
-  if [ ! -z "$arrUrl" ]; then
-    if [ ! -z "$arrApiKey" ]; then
-	    UnmappedFolderCleanerProcess
-    else
-      log "ERROR :: Skipping, missing API Key..."
-    fi
-  else
-    log "ERROR :: Skipping, missing URL..."
+	confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+  confFileCount=$(echo "$confFiles" | wc -l)
+
+  if [ -z "$confFiles" ]; then
+      log "ERROR :: No config files found, exiting..."
+      exit
   fi
+
+  for f in $confFiles; do
+    count=$(($count+1))
+    log "Processing \"$f\" config file"
+    settings "$f"
+    verifyConfig
+    if [ ! -z "$arrUrl" ]; then
+      if [ ! -z "$arrApiKey" ]; then
+        UnmappedFolderCleanerProcess
+      else
+        log "ERROR :: Skipping, missing API Key..."
+      fi
+    else
+      log "ERROR :: Skipping, missing URL..."
+    fi
+  done
 	log "Script sleeping for $unmappedFolderCleanerScriptInterval..."
 	sleep $unmappedFolderCleanerScriptInterval
 done
