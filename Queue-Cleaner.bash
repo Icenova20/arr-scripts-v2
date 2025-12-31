@@ -1,17 +1,17 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.4"
+scriptVersion="2.0"
 scriptName="QueueCleaner"
 dockerLogPath="/config/logs"
 
 settings () {
-  log "Import Script Settings..."
-  source /config/settings.conf
+  log "Import Script $1 Settings..."
+  source "$1"
 }
 
 verifyConfig () {
 
 	if [ "$enableQueueCleaner" != "true" ]; then
-		log "Script is not enabled, enable by setting enableQueueCleaner to \"true\" by modifying the \"/config/extended.conf\" config file..."
+		log "Script is not enabled, enable by setting enableQueueCleaner to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
 		log "Sleeping (infinity)"
 		sleep infinity
 	fi
@@ -56,7 +56,14 @@ QueueCleanerProcess () {
     arrApiVersion="v3"
     arrQueueData="$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pagesize=200&sortDirection=descending&sortKey=progress&includeUnknownSeriesItems=true&apikey=${arrApiKey}" | jq -r .records[])"
   fi
-  
+
+  # Sonarr
+  if [ "$arrApp" = "sonarr-anime" ]; then
+    arrUrl="$sonarranimeUrl"
+    arrApiKey="$sonarranimeApiKey"
+    arrApiVersion="v3"
+    arrQueueData="$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pagesize=200&sortDirection=descending&sortKey=progress&includeUnknownSeriesItems=true&apikey=${arrApiKey}" | jq -r .records[])"
+  fi
 
   # Radarr
   if [ "$arrApp" = "radarr" ]; then
@@ -100,28 +107,42 @@ for (( ; ; )); do
   let i++
   logfileSetup
   log "Starting..."
-  settings
-  verifyConfig
-  if [ ! -z "$radarrUrl" ]; then
-    if [ ! -z "$radarrApiKey" ]; then
-      QueueCleanerProcess "radarr"
-    else
-      log "ERROR :: Skipping Radarr, missing API Key..."
-    fi
-  else
-    log "ERROR :: Skipping Radarr, missing URL..."
+  confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+  confFileCount=$(echo "$confFiles" | wc -l)
+
+  if [ -z "$confFiles" ]; then
+      log "ERROR :: No config files found, exiting..."
+      exit
   fi
-  if [ ! -z "$sonarrUrl" ]; then
-    if [ ! -z "$sonarrApiKey" ]; then
-      QueueCleanerProcess "sonarr"
+
+  for f in $confFiles; do
+    count=$(($count+1))
+    log "Processing \"$f\" config file"
+    settings "$f"
+    verifyConfig
+    if [ ! -z "$radarrUrl" ]; then
+      if [ ! -z "$radarrApiKey" ]; then
+        QueueCleanerProcess "radarr"
+      else
+        log "ERROR :: Skipping Radarr, missing API Key..."
+      fi
     else
-      log "ERROR :: Skipping Sonarr, missing API Key..."
+      log "ERROR :: Skipping Radarr, missing URL..."
     fi
-  else
-    log "ERROR :: Skipping Sonarr, missing URL..."
-  fi
+    if [ ! -z "$sonarrUrl" ]; then
+      if [ ! -z "$sonarrApiKey" ]; then
+        QueueCleanerProcess "sonarr"
+      else
+        log "ERROR :: Skipping Sonarr, missing API Key..."
+      fi
+    else
+      log "ERROR :: Skipping Sonarr, missing URL..."
+    fi
+  done
+
   log "Sleeping $queueCleanerScriptInterval..."
   sleep $queueCleanerScriptInterval
+
 done
 
 exit
