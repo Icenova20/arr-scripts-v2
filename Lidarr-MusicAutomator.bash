@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.3"
+scriptVersion="1.4"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -270,7 +270,6 @@ LidarrWantedSearch () {
 
 }
 
-SECONDS=0
 for (( ; ; )); do
   let i++
   logfileSetup
@@ -294,7 +293,7 @@ for (( ; ; )); do
 
     if [ ! -z "$arrUrl" ]; then
       if [ ! -z "$arrApiKey" ]; then
-        
+        SECONDS=0        
         VerifyApiAccess
         ArlSetup
 
