@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.4"
+scriptVersion="1.5"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -306,11 +306,8 @@ for (( ; ; )); do
         LidarrWantedSearch "$lidarrCutoffRecords"
 
         duration=$SECONDS
-        if [ $duration -ge 60 ]; then
-            log "Completed in $(($duration / 60 )) minutes and $(($duration % 60 )) seconds!"
-        else
-            log "Completed in $duration seconds!"
-        fi
+        durationOutput="$(printf '%dd:%dh:%dm:%ds\n' $((duration/86400)) $((duration%86400/3600)) $((duration%3600/60)) $((duration%60)))"
+        echo "Completed in $durationOutput!"
         
       else
         log "ERROR :: Skipping $arrApp, missing API Key..."
