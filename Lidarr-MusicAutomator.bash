@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.5"
+scriptVersion="1.6"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -143,7 +143,7 @@ VerifyApiAccess () {
 }
 
 SearchDeezerAlbums () {
-    log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Searching Deezer $2 Albums for match...."
+    log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Searching $3 Deezer $2 Albums for a potential match...."
     for deezerAlbumId in $(echo "$1"); do
         deezerAlbumData=$(echo "$getDeezerArtistAlbums" | jq -r ".data[] | select(.id==$deezerAlbumId)")
         deezerAlbumTitle="$(echo "$deezerAlbumData" | jq -r .title)"
@@ -152,6 +152,12 @@ SearchDeezerAlbums () {
         deezerAlbumReleaseDate="$(echo "$deezerAlbumData" | jq -r .release_date)"
         deezerAlbumYear="${deezerAlbumReleaseDate:0:4}"
         downloadAlbumFolderName="$lidarrAlbumArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
+
+        if [ -f "$completedSearchIdLocation/deezer-$deezerAlbumId" ]; then
+            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Downloaded from Deezer, skipping..."
+            continue
+        fi
+
         if echo "${lidarrAlbumTitleClean,,}" | grep "${deezerAlbumTitleClean,,}" | read; then
           diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null) 
         else
@@ -196,6 +202,17 @@ SearchDeezerAlbums () {
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Notifying Lidarr to Import \"$downloadAlbumFolderName\""
             LidarrProcessIt=$(curl -s "$arrUrl/api/v1/command" --header "X-Api-Key:"${arrApiKey} -H "Content-Type: application/json" --data "{\"name\":\"DownloadedAlbumsScan\", \"path\":\"$completeDownloadPath/$downloadAlbumFolderName\"}")
             touch /config/found
+
+            if [ ! -d "$completedSearchIdLocation" ]; then
+                mkdir -p "$completedSearchIdLocation"
+                chmod 777 -R "$completedSearchIdLocation"
+            fi
+
+            if [ -d "$completedSearchIdLocation" ]; then
+                touch "$completedSearchIdLocation/deezer-$deezerAlbumId"
+                chmod 777 "$completedSearchIdLocation/deezer-$deezerAlbumId"
+            fi
+
             break
         else
             # For debugging only...
@@ -224,8 +241,9 @@ LidarrWantedSearch () {
         tidalArtistIds="$(echo "$tidalArtistUrl" | grep -o '[[:digit:]]*' | sort -u)"
         deezerArtistUrl=$(echo "${lidarrAlbumArtistData}" | jq -r ".links | .[] | select(.name==\"deezer\") | .url")
         deezerArtistIds="$(echo "$deezerArtistUrl" | grep -o '[[:digit:]]*' | sort -u)"
+        
 
-        if [ -f "$completedSearchIdLocation/deezer-$lidarrAlbumId" ]; then
+        if [ -f "$completedSearchIdLocation/lidarr-$lidarrAlbumId" ]; then
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Searched Deezer, skipping..."
             continue
         fi
@@ -234,19 +252,28 @@ LidarrWantedSearch () {
             # Uncomment for debugging purposes
             # log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $lidarrAlbumForeignAlbumId :: $deezerArtistId"
             getDeezerArtistAlbums=$(curl -s "https://api.deezer.com/artist/$deezerArtistId/albums?limit=1000")
-            getDeezerArtistAlbumsExplicitIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==true) | .id')"
-            getDeezerArtistAlbumsCleanIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==false) | .id')"
+
+            if [ "$lidarrAlbumType" = "Single" ]; then
+              getDeezerArtistAlbumsExplicitIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==true) | select(.record_type=="single") | .id')"
+              getDeezerArtistAlbumsCleanIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==false) |  select(.record_type=="single")| .id')"
+            else
+              getDeezerArtistAlbumsExplicitIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==true) | .id')"
+              getDeezerArtistAlbumsCleanIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==false) | .id')"
+            fi
             getDeezerArtistAlbumsCount="$(echo "$getDeezerArtistAlbums" | jq -r .total)"
+            getDeezerArtistAlbumsExplicitIdsCount=$(echo "$getDeezerArtistAlbumsExplicitIds" | wc -l)
+            getDeezerArtistAlbumsCleanIdsCount=$(echo "$getDeezerArtistAlbumsCleanIds" | wc -l)
+            
             if [ -f /config/found ]; then
                 rm /config/found
             fi
 
             # begin explicit search
-            SearchDeezerAlbums "$getDeezerArtistAlbumsExplicitIds" "Explicit"
+            SearchDeezerAlbums "$getDeezerArtistAlbumsExplicitIds" "Explicit" "$getDeezerArtistAlbumsExplicitIdsCount"
 
             if [ ! -f /config/found ]; then
                 # begin clean search
-                SearchDeezerAlbums "$getDeezerArtistAlbumsCleanIds" "Clean"
+                SearchDeezerAlbums "$getDeezerArtistAlbumsCleanIds" "Clean" "$getDeezerArtistAlbumsCleanIdsCount"
             fi
 
             if [ -f /config/found ]; then
@@ -263,8 +290,8 @@ LidarrWantedSearch () {
         fi
 
         if [ -d "$completedSearchIdLocation" ]; then
-            touch "$completedSearchIdLocation/deezer-$lidarrAlbumId"
-            chmod 777 "$completedSearchIdLocation/deezer-$lidarrAlbumId"
+            touch "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
+            chmod 777 "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
         fi
     done
 
@@ -296,6 +323,11 @@ for (( ; ; )); do
         SECONDS=0        
         VerifyApiAccess
         ArlSetup
+
+        log "Step - Removing previously downloaded items that failed to import..."
+        if [ -d "$completeDownloadPath" ]; then
+            rm -rf "$completeDownloadPath"/*
+        fi
 
         log "Step - Begining Missing search!"
         lidarrMissingRecords=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/wanted/missing?page=1&pagesize=999999&sortKey=$searchOrder&sortDirection=$searchDirection&apikey=${arrApiKey}")
