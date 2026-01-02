@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.8"
+scriptVersion="1.9"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -154,8 +154,17 @@ SearchDeezerAlbums () {
         downloadAlbumFolderName="$deezerArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
+        diff=1
         if  [ ! -z "$match" ]; then
           diff=0
+
+          deezerAlbumTrackCount=$(curl -s "https://api.deezer.com/album/$deezerAlbumId" | jq -r .nb_tracks)
+          trackCountMatch="$(echo "$lidarrAlbumReleasesTrackCounts" | grep "^$deezerAlbumTrackCount$")"
+          if  [ -z "$trackCountMatch" ]; then
+            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: ERROR :: Matched album title, but trackcount miss-match, skipping..."
+            continue
+          fi
+
         #if echo "${lidarrAlbumTitleClean,,}" | grep "${deezerAlbumTitleClean,,}" | read; then
           #diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null) 
         else
@@ -251,6 +260,9 @@ LidarrWantedSearch () {
         lidarrAlbumReleaseTitles=$(echo "$lidarrAlbumData" | jq -r ".releases[] |  .title")
         lidarrAlbumReleaseTitlesClean="$(echo "$lidarrAlbumReleaseTitles" | sed 's/[^0-9A-Za-z]*//g')"
         lidarrAlbumReleaseDisambiguation=$(echo "$lidarrAlbumData" | jq -r ".releases[] | .disambiguation")
+        lidarrAlbumReleasesTrackCounts=$(echo "$lidarrAlbumData" | jq -r ".releases[].trackCount" | sort -u)
+        lidarrAlbumReleasesMinTrackCount=$(echo "$lidarrAlbumData" | jq -r ".releases[].trackCount" | sort -n | head -n1)
+		    lidarrAlbumReleasesMaxTrackCount=$(echo "$lidarrAlbumData" | jq -r ".releases[].trackCount" | sort -n -r | head -n1)
 
         if [ -f "$completedSearchIdLocation/lidarr-$lidarrAlbumId" ]; then
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Searched, skipping..."
