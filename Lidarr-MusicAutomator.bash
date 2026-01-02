@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="2.0"
+scriptVersion="2.1"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -48,7 +48,7 @@ ArlSetup () {
         log "ERROR :: Exiting..."
         exit
     fi
-    if [ -d "$deemixFolder" ]; then
+    if [ ! -d "$deemixFolder" ]; then
         log "Creating Deemix Config folder"
         mkdir -p "$deemixFolder"
     fi
@@ -299,6 +299,8 @@ LidarrWantedSearch () {
 
             if  [ -z "$match" ]; then
               continue
+            else
+              log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Quick Match found, performing deeper search/matching..."
             fi
 
             if [ -f /config/found ]; then
