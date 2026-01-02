@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.6"
+scriptVersion="1.7"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -152,19 +152,24 @@ SearchDeezerAlbums () {
         deezerAlbumReleaseDate="$(echo "$deezerAlbumData" | jq -r .release_date)"
         deezerAlbumYear="${deezerAlbumReleaseDate:0:4}"
         downloadAlbumFolderName="$lidarrAlbumArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
+        match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
-        if [ -f "$completedSearchIdLocation/deezer-$deezerAlbumId" ]; then
-            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Downloaded from Deezer, skipping..."
-            continue
-        fi
-
-        if echo "${lidarrAlbumTitleClean,,}" | grep "${deezerAlbumTitleClean,,}" | read; then
-          diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null) 
+        if  [ ! -z "$match" ]; then
+          diff=0
+        #if echo "${lidarrAlbumTitleClean,,}" | grep "${deezerAlbumTitleClean,,}" | read; then
+          #diff=$(python -c "from pyxdameraulevenshtein import damerau_levenshtein_distance; print(damerau_levenshtein_distance(\"${lidarrAlbumTitleClean,,}\", \"${deezerAlbumTitleClean,,}\"))" 2>/dev/null) 
         else
           continue
-        fi    
+        fi
+
         if [ $diff = 0 ]; then
-            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: $deezerAlbumTitleClean vs $lidarrAlbumTitleClean :: Explicit Lyrics ($deezerExplicitLyrics) :: diff $diff :: Match Found!"
+
+            if [ -f "$completedSearchIdLocation/deezer-$deezerAlbumId" ]; then
+                log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Downloaded from Deezer (deezer-$deezerAlbumId), skipping..."
+                continue
+            fi
+  
+            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
             if [ -d "$incompleteDownloadPath" ]; then
                 rm -rf "$incompleteDownloadPath"
@@ -242,9 +247,13 @@ LidarrWantedSearch () {
         deezerArtistUrl=$(echo "${lidarrAlbumArtistData}" | jq -r ".links | .[] | select(.name==\"deezer\") | .url")
         deezerArtistIds="$(echo "$deezerArtistUrl" | grep -o '[[:digit:]]*' | sort -u)"
         
+        log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle"
+        lidarrAlbumReleaseTitles=$(echo "$lidarrAlbumData" | jq -r ".releases[] |  .title")
+        lidarrAlbumReleaseTitlesClean="$(echo "$lidarrAlbumReleaseTitles" | sed 's/[^0-9A-Za-z]*//g')"
+        lidarrAlbumReleaseDisambiguation=$(echo "$lidarrAlbumData" | jq -r ".releases[] | .disambiguation")
 
         if [ -f "$completedSearchIdLocation/lidarr-$lidarrAlbumId" ]; then
-            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Searched Deezer, skipping..."
+            log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Previously Searched, skipping..."
             continue
         fi
 
@@ -254,16 +263,29 @@ LidarrWantedSearch () {
             getDeezerArtistAlbums=$(curl -s "https://api.deezer.com/artist/$deezerArtistId/albums?limit=1000")
 
             if [ "$lidarrAlbumType" = "Single" ]; then
+              getDeezerAlbumTitles="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.record_type=="single") | .title')"
               getDeezerArtistAlbumsExplicitIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==true) | select(.record_type=="single") | .id')"
               getDeezerArtistAlbumsCleanIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==false) |  select(.record_type=="single")| .id')"
             else
+              getDeezerAlbumTitles="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | .title')"
               getDeezerArtistAlbumsExplicitIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==true) | .id')"
               getDeezerArtistAlbumsCleanIds="$(echo "$getDeezerArtistAlbums" | jq -r '.data[] | select(.explicit_lyrics==false) | .id')"
             fi
             getDeezerArtistAlbumsCount="$(echo "$getDeezerArtistAlbums" | jq -r .total)"
             getDeezerArtistAlbumsExplicitIdsCount=$(echo "$getDeezerArtistAlbumsExplicitIds" | wc -l)
             getDeezerArtistAlbumsCleanIdsCount=$(echo "$getDeezerArtistAlbumsCleanIds" | wc -l)
-            
+            getDeezerAlbumTitlesClean="$(echo "$getDeezerAlbumTitles" | sed 's/[^0-9A-Za-z]*//g')"
+
+            # Quick matching to speed process up...
+            match=""
+            for title in $(echo "${lidarrAlbumReleaseTitlesClean,,}" | sort -u); do
+                match="$(echo "${getDeezerAlbumTitlesClean,,}" | grep "^${title,,}$")"
+            done
+
+            if  [ -z "$match" ]; then
+              continue
+            fi
+
             if [ -f /config/found ]; then
                 rm /config/found
             fi
@@ -276,12 +298,6 @@ LidarrWantedSearch () {
                 SearchDeezerAlbums "$getDeezerArtistAlbumsCleanIds" "Clean" "$getDeezerArtistAlbumsCleanIdsCount"
             fi
 
-            if [ -f /config/found ]; then
-                rm /config/found
-                ArrWaitForTaskCompletion
-            else
-                log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: No match found :("
-            fi
         done
 
         if [ ! -d "$completedSearchIdLocation" ]; then
@@ -289,10 +305,17 @@ LidarrWantedSearch () {
             chmod 777 -R "$completedSearchIdLocation"
         fi
 
-        if [ -d "$completedSearchIdLocation" ]; then
-            touch "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
-            chmod 777 "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
-        fi
+        if [ -f /config/found ]; then
+            rm /config/found
+            ArrWaitForTaskCompletion
+        else
+          log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: No match found :("
+          if [ -d "$completedSearchIdLocation" ]; then
+              touch "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
+              chmod 777 "$completedSearchIdLocation/lidarr-$lidarrAlbumId"
+          fi
+      fi
+
     done
 
 }
