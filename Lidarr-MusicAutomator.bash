@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.9"
+scriptVersion="2.0"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -152,6 +152,7 @@ SearchDeezerAlbums () {
         deezerAlbumReleaseDate="$(echo "$deezerAlbumData" | jq -r .release_date)"
         deezerAlbumYear="${deezerAlbumReleaseDate:0:4}"
         downloadAlbumFolderName="$deezerArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
+        match=""
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
         diff=1
