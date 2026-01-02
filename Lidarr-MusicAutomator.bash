@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.7"
+scriptVersion="1.8"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -151,7 +151,7 @@ SearchDeezerAlbums () {
         deezerAlbumTitleClean="$(echo "$deezerAlbumTitle" | sed 's/[^0-9A-Za-z]*//g')"
         deezerAlbumReleaseDate="$(echo "$deezerAlbumData" | jq -r .release_date)"
         deezerAlbumYear="${deezerAlbumReleaseDate:0:4}"
-        downloadAlbumFolderName="$lidarrAlbumArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
+        downloadAlbumFolderName="$deezerArtistName - $deezerAlbumTitle ($deezerAlbumYear)"
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
         if  [ ! -z "$match" ]; then
@@ -260,6 +260,8 @@ LidarrWantedSearch () {
         for deezerArtistId in $(echo "$deezerArtistIds"); do
             # Uncomment for debugging purposes
             # log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $lidarrAlbumForeignAlbumId :: $deezerArtistId"
+            getDeezerArtistData=$(curl -s "https://api.deezer.com/artist/$deezerArtistId")
+            deezerArtistName="$(echo "$getDeezerArtistData" | jq -r '.name')"
             getDeezerArtistAlbums=$(curl -s "https://api.deezer.com/artist/$deezerArtistId/albums?limit=1000")
 
             if [ "$lidarrAlbumType" = "Single" ]; then
