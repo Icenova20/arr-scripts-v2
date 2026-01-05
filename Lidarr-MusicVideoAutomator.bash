@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.4"
+scriptVersion="1.5"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -83,6 +83,17 @@ RemuxToMKV () {
 
         ThumbnailDownloader
 
+        genre=""
+        if [ ! -z "$lidarrArtistGenres" ]; then
+            for genre in ${!lidarrArtistGenres[@]}; do
+                artistGenre="${lidarrArtistGenres[$genre]}"
+                OUT=$OUT"$artistGenre / "
+            done
+            genre="${OUT%???}"
+        else
+            genre=""
+        fi
+
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Remuxing file to MKV and Tagging"
         ffmpeg -y \
             -i "$file" \
@@ -156,8 +167,16 @@ DownloadVideo () {
     if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
         rm -rf "$lidarrMusicVideoTempDownloadPath"/*
     fi
-    log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video"
+    log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
     tidal-dl-ng dl "$1"
+
+    if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Download Complete!"
+    else
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Download Failed!"
+        exit
+    fi
+
 }
 
 ThumbnailDownloader () {
@@ -342,17 +361,7 @@ for (( ; ; )); do
         IFS=$'\n'
         lidarrArtistGenres=($(echo "$lidarrArtistData" | jq -r .genres[]))
         IFS="$OLDIFS"
-        genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
-            for genre in ${!lidarrArtistGenres[@]}; do
-                artistGenre="${lidarrArtistGenres[$genre]}"
-                OUT=$OUT"$artistGenre / "
-            done
-            genre="${OUT%???}"
-        else
-            genre=""
-        fi
-
+        
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: Processing..."
         for id in $(echo "$tidalArtistIds"); do
             tidalProcess "$id"
