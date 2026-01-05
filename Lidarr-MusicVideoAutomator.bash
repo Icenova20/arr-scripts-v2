@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.5"
+scriptVersion="1.6"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -168,13 +168,17 @@ DownloadVideo () {
         rm -rf "$lidarrMusicVideoTempDownloadPath"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
-    tidal-dl-ng dl "$1"
+    if echo "$(tidal-dl-ng dl "$1")" | grep "Media not found" | read; then
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Media Unavailable!"
+        failedDownloadCount=$(($failedDownloadCount-1))
+    fi
 
     if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Download Complete!"
+        failedDownloadCount=0
     else
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Download Failed!"
-        exit
+        failedDownloadCount=$(($failedDownloadCount+1))
     fi
 
 }
@@ -303,9 +307,16 @@ tidalProcess () {
         #echo "$videoData" | jq -r
         
         DownloadVideo "https://tidal.com/video/$videoId"
+        
 
-        #TagMP4
-        RemuxToMKV
+        if [ $failedDownloadCount -ge 3 ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Too many failed download attemps, exiting..."
+            exit
+        fi
+
+        if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
+            RemuxToMKV
+        fi
 
         if [ ! -d "$logFolder" ]; then
             mkdir -p "$logFolder"
