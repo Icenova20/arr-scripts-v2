@@ -316,6 +316,8 @@ tidalProcess () {
 
         if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
             RemuxToMKV
+        else
+            continue
         fi
 
         if [ ! -d "$logFolder" ]; then
