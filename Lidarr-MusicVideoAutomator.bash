@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.8"
+scriptVersion="1.9"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -93,15 +93,15 @@ RemuxToMKV () {
 
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Video quality is: $videoQaulity"
 
-        if [ "$requireMinumumVideoQaulity" = "FHD" ]; then
+        if [ "$requireMinimumVideoQaulity" = "FHD" ]; then
             if [ "$videoQaulity" = "HD" ] || [ "$videoQaulity" = "SD" ]; then
-                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinumumVideoQaulity"
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinimumVideoQaulity"
                 rm "$file"
                 continue
             fi
-        elif [ "$requireMinumumVideoQaulity" = "HD" ]; then
+        elif [ "$requireMinimumVideoQaulity" = "HD" ]; then
             if [ "$videoQaulity" = "SD" ]; then
-                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinumumVideoQaulity"
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinimumVideoQaulity"
                 rm "$file"
                 continue
             fi
