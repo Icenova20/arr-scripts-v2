@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.7"
+scriptVersion="1.8"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -80,6 +80,33 @@ RemuxToMKV () {
             continue
         fi
         
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Detecting video quality..."
+        videoData=$(mkvmerge -J "$file")
+        videoTrackDimensions=$(echo "${videoData}" | jq -r '.tracks[] | select(.type=="video") | .properties.pixel_dimensions')
+        if echo "$videoTrackDimensions" | grep -i "1920x" | read; then
+            videoQaulity="FHD"
+        elif echo "$videoTrackDimensions" | grep -i "1280x" | read; then
+            videoQaulity="HD"
+        else
+            videoQaulity="SD"
+        fi
+
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Video quality is: $videoQaulity"
+
+        if [ "$requireMinumumVideoQaulity" = "FHD" ]; then
+            if [ "$videoQaulity" = "HD" ] || [ "$videoQaulity" = "SD" ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinumumVideoQaulity"
+                rm "$file"
+                continue
+            fi
+        elif [ "$requireMinumumVideoQaulity" = "HD" ]; then
+            if [ "$videoQaulity" = "SD" ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video does not meet required minimum quality: $requireMinumumVideoQaulity"
+                rm "$file"
+                continue
+            fi
+        fi
+
 
         ThumbnailDownloader
 
@@ -138,10 +165,12 @@ CompletedFileMover () {
 
 
     if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" ]; then
-        if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$lidarrArtistFolder/$completedFileNameNoExt.mkv" ]; then
+        if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv" ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted video file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv"
+        else
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video Previously Imported"
         fi
     fi
 
@@ -150,6 +179,8 @@ CompletedFileMover () {
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted thumbnail file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.jpg" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.jpg"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.jpg"
+        else
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Thumbnail Previously Imported"
         fi
     fi
 
@@ -158,6 +189,8 @@ CompletedFileMover () {
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted NFO file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.nfo" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.nfo"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.nfo"
+        else
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: NFO Previously Imported"
         fi
     fi
 
@@ -305,7 +338,19 @@ tidalProcess () {
                 log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Interview Video detected, skipping..."
                 continue
             fi
+        elif echo "$videoTitle" | grep -i "episode [[:digit:]]" | read; then
+            videoType="Episode"
+            videoTypeFileName="behindthescenes"
+            if [ "$enableEpisodeVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Episode Video detected, skipping..."
+                continue
+            fi
         fi
+
+        if [ -f "$logFolder/video-$videoId" ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Previously downloaded, skipping..."
+            continue
+        fi        
 
         if [ $tidalArtistId -ne $videoMainArtistId ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video Main Artist ID ($videoMainArtistId) does not match requested Artist ID ($tidalArtistId), skippping..."
@@ -332,7 +377,7 @@ tidalProcess () {
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Too many failed download attemps, exiting..."
             exit
         fi
-
+        
         if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
             RemuxToMKV
         else
@@ -340,11 +385,13 @@ tidalProcess () {
         fi
 
         if [ ! -d "$logFolder" ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating log folder: $logFolder"
             mkdir -p "$logFolder"
             chmod 777 "$logFolder"
         fi
 
         if [ ! -f "$logFolder/video-$videoId" ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Writing log file: $logFolder/video-$videoId"
             touch "$logFolder/video-$videoId"
             chmod 666 "$logFolder/video-$videoId"
         fi
