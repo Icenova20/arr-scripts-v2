@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.1"
+scriptVersion="1.2"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -75,7 +75,7 @@ RemuxToMKV () {
         completedFileNameNoExt="$fileNameNoExt-$videoTypeFileName"
         
         if [ -f "$lidarrlidarrMusicVideoLibrary/$completedFileNameNoExt.mkv" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Alreday in library, performing cleanup"
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Alreday in library, performing cleanup"
             rm "$file"
             continue
         fi
@@ -83,7 +83,7 @@ RemuxToMKV () {
 
         ThumbnailDownloader
 
-        log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Remuxing file to MKV and Tagging"
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Remuxing file to MKV and Tagging"
         ffmpeg -y \
             -i "$file" \
             -c copy \
@@ -101,7 +101,7 @@ RemuxToMKV () {
             chmod 666 "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv"
 
         if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Removing source file for remuxing..."
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Removing source file for remuxing..."
             rm "$file"
         fi
 
@@ -114,13 +114,13 @@ RemuxToMKV () {
 
 CompletedFileMover () {
     if [ ! -d "$lidarrMusicVideoLibrary" ]; then
-        log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Library Folder"
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Library Folder"
         mkdir -p "$lidarrMusicVideoLibrary"
         chmod 777 "$lidarrMusicVideoLibrary"
     fi
 
     if [ ! -d "$lidarrMusicVideoLibrary/$lidarrArtistFolder" ]; then
-        log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Artist Folder: $lidarrArtistFolder"
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Artist Folder: $lidarrArtistFolder"
         mkdir -p "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
         chmod 777 "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
     fi
@@ -128,7 +128,7 @@ CompletedFileMover () {
 
     if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" ]; then
         if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$lidarrArtistFolder/$completedFileNameNoExt.mkv" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted video file to libary"
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted video file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv"
         fi
@@ -136,7 +136,7 @@ CompletedFileMover () {
 
     if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.jpg" ]; then
         if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.jpg" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted thumbnail file to libary"
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted thumbnail file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.jpg" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.jpg"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.jpg"
         fi
@@ -144,7 +144,7 @@ CompletedFileMover () {
 
     if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.nfo" ]; then
         if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.nfo" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted NFO file to libary"
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted NFO file to libary"
             mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.nfo" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.nfo"
             chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.nfo"
         fi
@@ -156,20 +156,20 @@ DownloadVideo () {
     if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
         rm -rf "$lidarrMusicVideoTempDownloadPath"/*
     fi
-    log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video"
+    log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video"
     tidal-dl-ng dl "$1"
 }
 
 ThumbnailDownloader () {
     thumbnailFile="$lidarrMusicVideoTempDownloadPath/${completedFileNameNoExt}.jpg"
     if [ ! -f "$thumbnailFile" ]; then
-        log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Thumbnail"
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Thumbnail"
         curl -s "$videoThumbnailUrl" -o "$thumbnailFile"
     fi
 }
 
 NfoWriter () {
-    log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Writing NFO"
+    log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Writing NFO"
     nfo="$lidarrMusicVideoTempDownloadPath/${completedFileNameNoExt}.nfo"
     if [ -f "$nfo" ]; then
         rm "$nfo"
@@ -245,13 +245,28 @@ tidalProcess () {
             videoTypeFileName="live"
         fi
 
+        if [ "$enableLiveVideos" = "false"  ] && [ "$videoType" = "Live"  ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
+            continue
+        fi
+
+        if [ "$enableLyricVideos" = "false"  ] && [ "$videoType" = "Lyric"  ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
+            continue
+        fi
+
+        if [ "$enableVisualVideos" = "false"  ] && [ "$videoType" = "Visualizer"  ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
+            continue
+        fi
+
         if [ -f "$logFolder/video-$videoId" ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Previously downloaded, skipping..."
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Previously downloaded, skipping..."
             continue
         fi
 
         if [ $tidalArtistId -ne $videoMainArtistId ]; then
-            log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video Main Artist ID ($videoMainArtistId) does not match requested Artist ID ($tidalArtistId), skippping..."
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video Main Artist ID ($videoMainArtistId) does not match requested Artist ID ($tidalArtistId), skippping..."
             continue
         fi
 
@@ -263,7 +278,7 @@ tidalProcess () {
             advisory="clean"
         fi        
         
-        log "$videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Processing..."
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Processing..."
         #echo "$videoThumbnailUrl"
         #echo "$videoArtists"
         #echo "$videoData" | jq -r
@@ -338,7 +353,7 @@ for (( ; ; )); do
             genre=""
         fi
 
-        log "$lidarrArtistName :: Processing..."
+        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: Processing..."
         for id in $(echo "$tidalArtistIds"); do
             tidalProcess "$id"
         done
