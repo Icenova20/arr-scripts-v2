@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.2"
+scriptVersion="1.3"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -255,7 +255,7 @@ tidalProcess () {
             continue
         fi
 
-        if [ "$enableVisualVideos" = "false"  ] && [ "$videoType" = "Visualizer"  ]; then
+        if [ "$enableVisualizerVideos" = "false"  ] && [ "$videoType" = "Visualizer"  ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
             continue
         fi
