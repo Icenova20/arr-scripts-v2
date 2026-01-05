@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.0"
+scriptVersion="1.1"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -235,7 +235,7 @@ tidalProcess () {
         # Detect video type
         videoType="Music Video"
         videoTypeFileName="video"
-        if echo "$videoTitle" | grep -i "video" | grep -i "Visualizer" | read; then
+        if echo "$videoTitle" | grep -i "Visualizer" | read; then
             videoType="Visualizer"
         elif echo "$videoTitle" | grep -i "video" | grep -i "lyric" | read; then
             videoType="Lyric"
