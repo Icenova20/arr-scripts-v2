@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.3"
+scriptVersion="1.4"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -342,7 +342,7 @@ for (( ; ; )); do
         IFS=$'\n'
         lidarrArtistGenres=($(echo "$lidarrArtistData" | jq -r .genres[]))
         IFS="$OLDIFS"
-
+        genre=""
         if [ ! -z "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
