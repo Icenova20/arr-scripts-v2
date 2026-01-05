@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.6"
+scriptVersion="1.7"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -260,32 +260,51 @@ tidalProcess () {
         videoTypeFileName="video"
         if echo "$videoTitle" | grep -i "Visualizer" | read; then
             videoType="Visualizer"
+            if [ "$enableLiveVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Visualizer Video detected, skipping..."
+                continue
+            fi
+        elif echo "$videoTitle" | grep -i "Visualiser" | read; then
+            videoType="Visualiser"
+            if [ "$enableVisualizerVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Visualizer Video detected, skipping..."
+                continue
+            fi
         elif echo "$videoTitle" | grep -i "video" | grep -i "lyric" | read; then
             videoType="Lyric"
             videoTypeFileName="lyrics"
+            if [ "$enableLyricVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Lyric Video detected, skipping..."
+                continue
+            fi
         elif echo "$videoTitle" | grep -i "\(.*live.*\)" | read; then
             videoType="Live"
             videoTypeFileName="live"
-        fi
-
-        if [ "$enableLiveVideos" = "false"  ] && [ "$videoType" = "Live"  ]; then
-            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
-            continue
-        fi
-
-        if [ "$enableLyricVideos" = "false"  ] && [ "$videoType" = "Lyric"  ]; then
-            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
-            continue
-        fi
-
-        if [ "$enableVisualizerVideos" = "false"  ] && [ "$videoType" = "Visualizer"  ]; then
-            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
-            continue
-        fi
-
-        if [ -f "$logFolder/video-$videoId" ]; then
-            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Previously downloaded, skipping..."
-            continue
+            if [ "$enableLiveVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Live Video detected, skipping..."
+                continue
+            fi
+        elif echo "$videoTitle" | grep -i "behind the scenes" | read; then
+            videoType="Behind the Scenes"
+            videoTypeFileName="behindthescenes"
+            if [ "$enableBehindTheScenesVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Lyric Video detected, skipping..."
+                continue
+            fi
+        elif echo "$videoTitle" | grep -i "making of" | read; then
+            videoType="Behind the Scenes"
+            videoTypeFileName="behindthescenes"
+            if [ "$enableBehindTheScenesVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Behind The Scenes Video detected, skipping..."
+                continue
+            fi
+        elif echo "$videoTitle" | grep -i "intreview" | read; then
+            videoType="Interview"
+            videoTypeFileName="interview"
+            if [ "$enableInterviewVideos" = "false"  ]; then
+                log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Interview Video detected, skipping..."
+                continue
+            fi
         fi
 
         if [ $tidalArtistId -ne $videoMainArtistId ]; then
