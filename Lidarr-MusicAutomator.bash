@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="2.1"
+scriptVersion="2.2"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -16,8 +16,8 @@ settings () {
 
 verifyConfig () {
 
-	if [ "$enableLidarrMusicAutomator" != "true" ]; then
-		log "Script is not enabled, enable by setting enableLidarrMusicAutomator to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
+	if [ "$lidarrMusicVideoAutomator" != "true" ]; then
+		log "Script is not enabled, enable by setting lidarrMusicVideoAutomator to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
 		log "Sleeping (infinity)"
 		sleep infinity
 	fi
@@ -377,16 +377,16 @@ for (( ; ; )); do
         lidarrCutoffRecords=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/wanted/cutoff?page=1&pagesize=999999&sortKey=$searchOrder&sortDirection=$searchDirection&apikey=${arrApiKey}")
         LidarrWantedSearch "$lidarrCutoffRecords"
 
-        duration=$SECONDS
-        durationOutput="$(printf '%dd:%dh:%dm:%ds\n' $((duration/86400)) $((duration%86400/3600)) $((duration%3600/60)) $((duration%60)))"
-        echo "Completed in $durationOutput!"
-        
       else
         log "ERROR :: Skipping $arrApp, missing API Key..."
       fi
     else
       log "ERROR :: Skipping $arrApp, missing URL..."
     fi
+
+    duration=$SECONDS
+    durationOutput="$(printf '%dd:%dh:%dm:%ds\n' $((duration/86400)) $((duration%86400/3600)) $((duration%3600/60)) $((duration%60)))"
+    echo "Completed in $durationOutput!"
 
 
   done
