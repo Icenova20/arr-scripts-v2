@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.9"
+scriptVersion="2.0"
 scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
@@ -38,6 +38,16 @@ ConfigureTidalDl () {
         log "login manually using the following command: tidal-dl-ng login"
         exit
     fi
+}
+
+verifyConfig () {
+
+	if [ "$enableLidarrMusicAutomator" != "true" ]; then
+		log "Script is not enabled, enable by setting enableLidarrMusicAutomator to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
 }
 
 settings () {
@@ -197,13 +207,15 @@ CompletedFileMover () {
 }
 
 DownloadVideo () {
+    videoUnavailable="false"
     if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
         rm -rf "$lidarrMusicVideoTempDownloadPath"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
-    if echo "$(tidal-dl-ng dl "$1")" | grep "Media not found" | read; then
+    if tidal-dl-ng dl "$1" | grep "Media not found" | read; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Media Unavailable!"
         failedDownloadCount=$(($failedDownloadCount-1))
+        videoUnavailable="true"
     fi
 
     if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
@@ -380,10 +392,10 @@ tidalProcess () {
         
         if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
             RemuxToMKV
-        else
+        elif [ "$videoUnavailable" = "false" ]; then
             continue
         fi
-
+    
         if [ ! -d "$logFolder" ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating log folder: $logFolder"
             mkdir -p "$logFolder"
@@ -415,41 +427,56 @@ for (( ; ; )); do
 
   for f in $confFiles; do
     count=$(($count+1))
+    SECONDS=0   
     log "Processing \"$f\" config file"
     settings "$f"
+    verifyConfig
     ConfigureTidalDl
+    if [ ! -z "$arrUrl" ]; then
+      if [ ! -z "$arrApiKey" ]; then
+        lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
+        lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
+        lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)
+        processCount=0
+        for lidarrArtistId in $(echo $lidarrArtistIds); do
+            processCount=$(( $processCount + 1))
+            lidarrArtistData=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist/$lidarrArtistId?apikey=$arrApiKey")
+            lidarrArtistName=$(echo $lidarrArtistData | jq -r .artistName)
+            lidarrArtistMusicbrainzId=$(echo $lidarrArtistData | jq -r .foreignArtistId)
+            lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
+            lidarrArtistFolder="$(basename "${lidarrArtistPath}" | cut -d "(" -f 1)"
+            lidarrArtistFolder="$(echo "$lidarrArtistFolder" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+            tidalArtistUrl=$(echo "${lidarrArtistData}" | jq -r ".links | .[] | select(.name==\"tidal\") | .url")
+            tidalArtistIds="$(echo "$tidalArtistUrl" | grep -o '[[:digit:]]*' | sort -u)"
 
+            # Get Genre Data
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            lidarrArtistGenres=($(echo "$lidarrArtistData" | jq -r .genres[]))
+            IFS="$OLDIFS"
+            
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: Processing..."
+            for id in $(echo "$tidalArtistIds"); do
+                tidalProcess "$id"
+            done
 
-    lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
-    lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
-    lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)
-    processCount=0
-    for lidarrArtistId in $(echo $lidarrArtistIds); do
-        processCount=$(( $processCount + 1))
-        lidarrArtistData=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist/$lidarrArtistId?apikey=$arrApiKey")
-        lidarrArtistName=$(echo $lidarrArtistData | jq -r .artistName)
-        lidarrArtistMusicbrainzId=$(echo $lidarrArtistData | jq -r .foreignArtistId)
-        lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
-        lidarrArtistFolder="$(basename "${lidarrArtistPath}" | cut -d "(" -f 1)"
-        lidarrArtistFolder="$(echo "$lidarrArtistFolder" | sed 's/^[ \t]*//;s/[ \t]*$//')"
-        tidalArtistUrl=$(echo "${lidarrArtistData}" | jq -r ".links | .[] | select(.name==\"tidal\") | .url")
-        tidalArtistIds="$(echo "$tidalArtistUrl" | grep -o '[[:digit:]]*' | sort -u)"
-
-        # Get Genre Data
-        OLDIFS="$IFS"
-        IFS=$'\n'
-        lidarrArtistGenres=($(echo "$lidarrArtistData" | jq -r .genres[]))
-        IFS="$OLDIFS"
-        
-        log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: Processing..."
-        for id in $(echo "$tidalArtistIds"); do
-            tidalProcess "$id"
+            
         done
+      else
+        log "ERROR :: Skipping $arrApp, missing API Key..."
+      fi
+    else
+      log "ERROR :: Skipping $arrApp, missing URL..."
+    fi
 
-        
-    done
+    duration=$SECONDS
+    durationOutput="$(printf '%dd:%dh:%dm:%ds\n' $((duration/86400)) $((duration%86400/3600)) $((duration%3600/60)) $((duration%60)))"
+    echo "Completed in $durationOutput!"
 
   done
+
+  log "Sleeping $lidarrMusicVideoAutomatorInterval..."
+  sleep $lidarrMusicVideoAutomatorInterval
   
 done
 
