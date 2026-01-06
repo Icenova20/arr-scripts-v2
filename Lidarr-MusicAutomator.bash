@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="2.2"
+scriptVersion="2.3"
 scriptName="Lidarr-MusicAutomator"
 dockerPath="/config/logs"
 arrApp="Lidarr"
@@ -386,7 +386,7 @@ for (( ; ; )); do
 
     duration=$SECONDS
     durationOutput="$(printf '%dd:%dh:%dm:%ds\n' $((duration/86400)) $((duration%86400/3600)) $((duration%3600/60)) $((duration%60)))"
-    echo "Completed in $durationOutput!"
+    log "Script Completed in $durationOutput!"
 
 
   done
