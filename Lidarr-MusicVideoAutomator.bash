@@ -31,11 +31,13 @@ ConfigureTidalDl () {
         if cat "/root/.config/tidal_dl_ng/token.json" | grep "null" | read;  then 
             log "tidal-dl-ng requires authentication, authenticate now:"
             log "login manually using the following command: tidal-dl-ng login"
+            tidalFailure="true"
             exit
         fi
     else
         log "tidal-dl-ng requires authentication, authenticate now:"
         log "login manually using the following command: tidal-dl-ng login"
+        tidalFailure="true"
         exit
     fi
 }
@@ -76,6 +78,45 @@ logfileSetup () {
 log () {
   m_time=`date "+%F %T"`
   echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+}
+
+TagMP4 () {
+    find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" -print0 | while IFS= read -r -d '' file; do
+        fileName="$(basename "$file")"
+        fileNameNoExt="${fileName%.*}"
+        completedFileNameNoExt="$fileNameNoExt-$videoTypeFileName"
+
+        mv "$file" "$lidarrMusicVideoTempDownloadPath/temp.mp4"
+
+        ThumbnailDownloader
+
+        genre=""
+        if [ ! -z "$lidarrArtistGenres" ]; then
+            for genre in ${!lidarrArtistGenres[@]}; do
+                artistGenre="${lidarrArtistGenres[$genre]}"
+                OUT=$OUT"$artistGenre / "
+            done
+            genre="${OUT%???}"
+        else
+            genre=""
+        fi
+
+        AtomicParsley "$lidarrMusicVideoTempDownloadPath/temp.mp4" \
+            --title "${videoTitle}${explicitTitleTag}" \
+            --year "$videoYear" \
+            --artist "$lidarrArtistName" \
+            --albumArtist "$lidarrArtistName" \
+            --genre "$genre" \
+            --advisory "$advisory" \
+            --artwork "$thumbnailFile" \
+            -o "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mp4" 
+
+        if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mp4" ]; then
+            rm "$lidarrMusicVideoTempDownloadPath/temp.mp4"
+        fi
+        NfoWriter
+        CompletedFileMover
+    done
 }
 
 RemuxToMKV () {
@@ -173,6 +214,15 @@ CompletedFileMover () {
         chmod 777 "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
     fi
 
+    if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mp4" ]; then
+        if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mp4" ]; then
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Moving compeleted video file to libary"
+            mv "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mp4" "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mp4"
+            chmod 666 "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mp4"
+        else
+            log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: ERROR :: Video Previously Imported"
+        fi
+    fi
 
     if [ -f "$lidarrMusicVideoTempDownloadPath/$completedFileNameNoExt.mkv" ]; then
         if [ ! -f "$lidarrMusicVideoLibrary/$lidarrArtistFolder/$completedFileNameNoExt.mkv" ]; then
@@ -391,7 +441,12 @@ tidalProcess () {
         fi
         
         if find "$lidarrMusicVideoTempDownloadPath" -type f -iname "*.mp4" | read; then
-            RemuxToMKV
+
+            if [ "$musicVideoFormat" = "mkv" ]; then
+                RemuxToMKV
+            else
+                TagMP4
+            fi
         elif [ "$videoUnavailable" = "false" ]; then
             continue
         fi
@@ -432,6 +487,9 @@ for (( ; ; )); do
     settings "$f"
     verifyConfig
     ConfigureTidalDl
+    if [ "$tidalFailure" = "true" ]; then
+        exit
+    fi
     if [ ! -z "$arrUrl" ]; then
       if [ ! -z "$arrApiKey" ]; then
         lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
