@@ -50,8 +50,6 @@ services:
      - Important to map volumes correctly in both containers or imports will simply fail... and not be so automated :(
     - [Lidarr-MusicVideoAutomator.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Lidarr-MusicVideoAutomator.bash)
       - Script downloads music videos for Lidarr artists using a popular CLI tool.
-      - IMPORTANT!!!
-        - At this time, manually run this script and store it in the following location: `/config`
 3. Modify edit [settings.conf](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/settings.conf) (`/config/settings.conf`) with your appropriate settings
    - Support added for multiple `.conf` files to support multiple instances... Create/duplicate the settings.conf file as many times as needed to allow the scripts to run against multiple instances. Do not use spaces in the file name.
 5. Start or Restart the container
