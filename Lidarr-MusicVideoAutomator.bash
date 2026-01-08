@@ -44,8 +44,8 @@ ConfigureTidalDl () {
 
 verifyConfig () {
 
-	if [ "$enableLidarrMusicAutomator" != "true" ]; then
-		log "Script is not enabled, enable by setting enableLidarrMusicAutomator to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
+	if [ "$lidarrMusicVideoAutomator" != "true" ]; then
+		log "Script is not enabled, enable by setting lidarrMusicVideoAutomator to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
 		log "Sleeping (infinity)"
 		sleep infinity
 	fi
