@@ -82,8 +82,9 @@ QueueCleanerProcess () {
   fi
 
   arrQueueIdCount=$(echo "$arrQueueData" | jq -r ".id" | wc -l)
-  arrQueueCompletedIds=$(echo "$arrQueueData" | jq -r 'select(.status=="completed") | select(.trackedDownloadStatus=="warning") | .id')
-  arrQueueIdsCompletedCount=$(echo "$arrQueueData" | jq -r 'select(.status=="completed") | select(.trackedDownloadStatus=="warning") | .id' | wc -l)
+  # Exclude TBA items from the "Completed/Warning" cleanup list
+  arrQueueCompletedIds=$(echo "$arrQueueData" | jq -r 'select(.status=="completed") | select(.trackedDownloadStatus=="warning") | select(.statusMessages | tostring | contains("TBA") | not) | .id')
+  arrQueueIdsCompletedCount=$(echo "$arrQueueCompletedIds" | wc -w)
   arrQueueFailedIds=$(echo "$arrQueueData" | jq -r 'select(.status=="failed") | .id')
   arrQueueIdsFailedCount=$(echo "$arrQueueData" | jq -r 'select(.status=="failed") | .id' | wc -l)
   arrQueueStalledIds=$(echo "$arrQueueData" | jq -r 'select(.status=="stalled") | .id')
