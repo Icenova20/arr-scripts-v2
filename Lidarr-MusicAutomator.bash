@@ -25,7 +25,9 @@ verifyConfig () {
 }
 
 InstallDependencies () {
-  if apk --no-cache list | grep installed | grep python3 | read; then
+  # Fix: Check for py3-pip specifically. Checking only for python3 can lead to a state where
+  # python is installed but pip is missing, causing the subsequent 'python3 -m pip' commands to fail.
+  if apk --no-cache list | grep installed | grep py3-pip | read; then
     log "Dependencies already installed, skipping..."
   else
     log "Installing script dependencies...."
