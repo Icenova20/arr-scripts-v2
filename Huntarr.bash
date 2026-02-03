@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.0"
+scriptVersion="1.1"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -67,7 +67,7 @@ ArrAppStatusCheck () {
         return
     fi
     arrTaskCount=$(curl -s "$arrUrl/api/$arrApiVersion/command?apikey=${arrApiKey}" | jq -r '.[] | select(.status=="started") | .name' | wc -l)
-    if [ $arrTaskCount -ge 2 ]; then
+    if [ $arrTaskCount -ge 3 ]; then
         touch "/config/huntarr-break"
         return
     fi
