@@ -87,7 +87,7 @@ DailySeriesTrimmerProcess () {
 
         # If non-daily series, set maximum episode count to match latest season total episode count
         if [ $seriesType != "daily" ]; then
-            maximumDailyEpisodes=$(echo "$seriesData" | jq -r ".seasons | sort_by(.seasonNumber) | reverse | .[].statistics.totalEpisodeCount" | head -n1)
+            maximumDailyEpisodes=$(echo "$seriesData" | jq -r ".seasons | map(select(.seasonNumber > 0 and .statistics.totalEpisodeCount > 1)) | sort_by(.seasonNumber) | reverse | .[].statistics.totalEpisodeCount" | head -n1)
         fi
 
         # Skip processing if less than the maximumDailyEpisodes setting were found to be downloaded
