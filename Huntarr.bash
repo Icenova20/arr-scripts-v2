@@ -62,7 +62,7 @@ HuntarrSonarr () {
 ArrAppStatusCheck () {
     arrQueue=$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pageSize=10&apikey=${arrApiKey}")
     arrQueueTotalRecords=$(echo "$arrQueue" | jq -r '.records[] | select(.status!="completed") | .id' | wc -l)
-    if [ $arrQueueTotalRecords -ge 2 ]; then
+    if [ $arrQueueTotalRecords -ge 3 ]; then
         touch "/config/huntarr-break"
         return
     fi
