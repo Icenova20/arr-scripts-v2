@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.1"
+scriptVersion="1.2"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -60,7 +60,7 @@ HuntarrSonarr () {
 }
 
 ArrAppStatusCheck () {
-    arrQueue=$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pageSize=10&apikey=${arrApiKey}")
+    arrQueue=$(curl -s "$arrUrl/api/$arrApiVersion/queue?page=1&pageSize=100&apikey=${arrApiKey}")
     arrQueueTotalRecords=$(echo "$arrQueue" | jq -r '.records[] | select(.status!="completed") | .id' | wc -l)
     if [ $arrQueueTotalRecords -ge 3 ]; then
         touch "/config/huntarr-break"
