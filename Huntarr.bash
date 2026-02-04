@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.7"
+scriptVersion="1.8"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -82,7 +82,7 @@ HuntarrProcess () {
 
     # Reset API count if older than 1 day
     if [ -f "/config/huntarr/$arrApp-api-search-count" ]; then
-        find "/config/huntarr" -iname "$arrApp-api-search-count" -type f -ctime +1 -delete
+        find "/config/huntarr" -iname "$arrApp-api-search-count" -type f -ctime +0 -delete
     else
         echo -n "0" > "/config/huntarr/$arrApp-api-search-count"
     fi
