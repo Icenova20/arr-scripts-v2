@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="2.1"
+scriptVersion="2.2"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -11,9 +11,10 @@ settings () {
 verifyConfig () {
 
 	if [ "$enableHuntarr" != "true" ]; then
-		log "Script is not enabled, enable by setting enableHuntarr to \"true\" by modifying the \"/config/<filename>.conf\" config file..."
-		log "Sleeping (infinity)"
-		sleep infinity
+		log "Script is not enabled, enable by setting enableHuntarr to \"true\" by modifying the \"$1\" config file..."
+		log "Sleeping $huntarrScriptInterval..."
+  		sleep $huntarrScriptInterval
+		exit
 	fi
 
 }
@@ -225,7 +226,7 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settingsFileName=$(basename "${f%.*}")
     settings "$f"
-    verifyConfig
+    verifyConfig "$f"
     if [ ! -z "$radarrUrl" ]; then
       if [ ! -z "$radarrApiKey" ]; then
         HuntarrRadarr
