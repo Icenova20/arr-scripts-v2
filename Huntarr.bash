@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.3"
+scriptVersion="1.7"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -107,18 +107,27 @@ HuntarrProcess () {
         return
     fi
 
-    # delete cached lists if older than 6 hours
-    find "/config/huntarr" -iname "$arrApp-*-list.json" -type f -mmin +360 -delete
-
     # Gather Missing and Cutoff items for processing...
-    searchOrder="releaseDate"
-    searchDirection="descending"
-    if [ ! -f "/config/huntarr/$arrApp-missing-list.json" ]; then
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=999999&sortKey=&sortDirection=$searchDirection&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-missing-list.json"
-    fi
+    # Radarr
+    if [ "$arrApp" == "Radarr" ]; then
+
+        # missing list
+        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=50&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-missing-list.json"
+       
+        # cutoff list
+        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=50&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-cutoff-list.json"
     
-    if [ ! -f "/config/huntarr/$arrApp-cutoff-list.json" ]; then
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=999999&sortKey=$searchOrder&sortDirection=$searchDirection&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-cutoff-list.json"
+    fi
+
+    # Sonarr
+    if [ "$arrApp" == "Sonarr" ]; then
+
+        # missing list
+        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=50&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-missing-list.json"
+
+        # cutoff list
+        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=50&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-cutoff-list.json"    
+    
     fi
 
     arrItemListData=$(cat  "/config/huntarr/$arrApp-missing-list.json" "/config/huntarr/$arrApp-cutoff-list.json")
@@ -134,14 +143,13 @@ HuntarrProcess () {
         if [ -f "/config/huntarr/$arrApp-api-search-count" ]; then
             currentApiCounter=$(cat "/config/huntarr/$arrApp-api-search-count")
             if [ $currentApiCounter -ge $huntarrDailyApiSearchLimit ]; then
-                log "$arrApp :: $processNumber/$arrItemCount :: Daily API Limit reached..."
+                log "$arrApp :: Daily API Limit reached..."
                 break
             fi
         fi
 
         # Check for previous search
         if [ -f "/config/huntarr/$settingsFileName/$arrApp/$arrItemId" ]; then
-            log "$arrApp :: $processNumber/$arrItemCount :: Previously Searched ($arrItemId), skipping..."
             continue
         fi
 
@@ -149,7 +157,7 @@ HuntarrProcess () {
         ArrAppStatusCheck
         if [ -f "/config/huntarr-break" ]; then
             rm "/config/huntarr-break"
-            log "$arrApp :: $processNumber/$arrItemCount :: $arrApp App busy..."
+            log "$arrApp :: $arrApp App busy..."
             return
         fi   
 
@@ -157,12 +165,14 @@ HuntarrProcess () {
         arrItemData=$(echo "$arrItemListData" | jq -r "select(.id==$arrItemId)")
         arrItemTitle=$(echo "$arrItemData" | jq -r .title)
         
-        log "$arrApp :: $processNumber/$arrItemCount :: $arrItemTitle ($arrItemId) :: Searching..."
+        log "$arrApp :: $arrItemTitle ($arrItemId) :: Searching..."
 
+        # Radarr
         if [ "$arrApp" == "Radarr" ]; then
             automatedSearchTrigger=$(curl -s "$arrUrl/api/$arrApiVersion/command" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $arrApiKey" --data-raw "{\"name\":\"MoviesSearch\",\"movieIds\":[$arrItemId]}")
         fi
 
+        # Sonarr
         if [ "$arrApp" == "Sonarr" ]; then
             automatedSearchTrigger=$(curl -s "$arrUrl/api/$arrApiVersion/command" -X POST -H 'Content-Type: application/json' -H "X-Api-Key: $arrApiKey" --data-raw "{\"name\":\"EpisodeSearch\",\"episodeIds\":[$arrItemId]}")
         fi
