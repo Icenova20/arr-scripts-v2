@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.8"
+scriptVersion="1.9"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -81,15 +81,15 @@ HuntarrProcess () {
     fi
 
     # Reset API count if older than 1 day
-    if [ -f "/config/huntarr/$arrApp-api-search-count" ]; then
-        find "/config/huntarr" -iname "$arrApp-api-search-count" -type f -ctime +0 -delete
+    if [ -f "/config/huntarr/api-search-count" ]; then
+        find "/config/huntarr" -iname "api-search-count" -type f -ctime +0 -delete
     else
-        echo -n "0" > "/config/huntarr/$arrApp-api-search-count"
+        echo -n "0" > "/config/huntarr/api-search-count"
     fi
 
     # check if API limit has been reached
-    if [ -f "/config/huntarr/$arrApp-api-search-count" ]; then
-        currentApiCounter=$(cat "/config/huntarr/$arrApp-api-search-count")
+    if [ -f "/config/huntarr/api-search-count" ]; then
+        currentApiCounter=$(cat "/config/huntarr/api-search-count")
         if [ $currentApiCounter -ge $huntarrDailyApiSearchLimit ]; then
             log "$arrApp :: Daily API Limit reached... "
             return
@@ -140,8 +140,8 @@ HuntarrProcess () {
         processNumber=$(($processNumber + 1))
 
         # check if API limit has been reached
-        if [ -f "/config/huntarr/$arrApp-api-search-count" ]; then
-            currentApiCounter=$(cat "/config/huntarr/$arrApp-api-search-count")
+        if [ -f "/config/huntarr/api-search-count" ]; then
+            currentApiCounter=$(cat "/config/huntarr/api-search-count")
             if [ $currentApiCounter -ge $huntarrDailyApiSearchLimit ]; then
                 log "$arrApp :: Daily API Limit reached..."
                 break
@@ -178,7 +178,7 @@ HuntarrProcess () {
         fi
 
         # update API search count
-        echo -n "$(($currentApiCounter + 1))" > "/config/huntarr/$arrApp-api-search-count"
+        echo -n "$(($currentApiCounter + 1))" > "/config/huntarr/api-search-count"
 
         # create log folder for searched items
         if [ ! -d "/config/huntarr/$settingsFileName/$arrApp" ]; then
