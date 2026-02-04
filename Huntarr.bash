@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="2.0"
+scriptVersion="2.1"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -127,10 +127,10 @@ HuntarrProcess () {
     if [ "$arrApp" == "Radarr" ]; then
 
         # missing list
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=50&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-missing-list.json"
+        missingList=$(wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=10&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]')
        
         # cutoff list
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=50&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-cutoff-list.json"
+        cutoffList=$(wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=10&sortDirection=ascending&sortKey=movies.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]')
     
     fi
 
@@ -138,14 +138,14 @@ HuntarrProcess () {
     if [ "$arrApp" == "Sonarr" ]; then
 
         # missing list
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=50&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-missing-list.json"
+        missingList=$(wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/missing?page=1&pagesize=10&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]')
 
         # cutoff list
-        wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=50&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]' > "/config/huntarr/$arrApp-cutoff-list.json"    
+        cutoffList=$(wget --timeout=0 -q -O - "$arrUrl/api/$arrApiVersion/wanted/cutoff?page=1&pagesize=10&sortDirection=ascending&sortKey=episodes.lastSearchTime&monitored=true&apikey=${arrApiKey}" | jq -r '.records[]')  
     
     fi
 
-    arrItemListData=$(cat  "/config/huntarr/$arrApp-missing-list.json" "/config/huntarr/$arrApp-cutoff-list.json")
+    arrItemListData=$(echo  "$missingList" "$cutoffList")
     arrItemIds=$(echo "$arrItemListData" | jq -r .id)
     arrItemCount=$(echo "$arrItemIds" | wc -l) 
 
