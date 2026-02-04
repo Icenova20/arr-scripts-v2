@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
-scriptVersion="1.9"
+scriptVersion="2.0"
 scriptName="Huntarr"
 dockerLogPath="/config/logs"
 
@@ -19,7 +19,7 @@ verifyConfig () {
 }
 
 logfileSetup () {
-  logFileName="$scriptName-$(date +"%Y_%m_%d_%I_%M_%p").txt"
+  logFileName="$scriptName-$(date +"%Y_%m_%d-%I_%p").txt"
 
   if [ ! -d "$dockerLogPath" ]; then
     mkdir -p "$dockerLogPath"
@@ -74,22 +74,37 @@ ArrAppStatusCheck () {
 
 }
 
+HuntarrAPILimitFile () {
+    # Create base directory for various functions/process
+    if [ ! -d "/config/huntarr" ]; then
+        mkdir -p "/config/huntarr" 
+    fi
+    apiLimitFile="Huntarr-api-search-count-$(date +"%Y_%m_%d").txt"
+    if [ ! -f "/config/huntarr/$apiLimitFile" ]; then
+        echo -n "0" > "/config/huntarr/$apiLimitFile"
+    fi
+
+    if find "/config/huntarr" -type f -iname "Huntarr-api-search-count-*.txt" | read; then
+        # Keep only the last 5 log files for 6 active log files at any given time...
+        rm -f $(ls -1t /config/huntarr/Huntarr-api-search-count-* | tail -n +5)
+        # delete log files older than 5 days
+        find "/config/huntarr"  -type f -iname "Huntarr-api-search-count-*.txt" -mtime +5 -delete
+    fi
+}
+
 HuntarrProcess () {
+    
     # Create base directory for various functions/process
     if [ ! -d "/config/huntarr" ]; then
         mkdir -p "/config/huntarr" 
     fi
 
-    # Reset API count if older than 1 day
-    if [ -f "/config/huntarr/api-search-count" ]; then
-        find "/config/huntarr" -iname "api-search-count" -type f -ctime +0 -delete
-    else
-        echo -n "0" > "/config/huntarr/api-search-count"
-    fi
+    # Indexer API Limit Process
+    HuntarrAPILimitFile
 
     # check if API limit has been reached
-    if [ -f "/config/huntarr/api-search-count" ]; then
-        currentApiCounter=$(cat "/config/huntarr/api-search-count")
+    if [ -f "/config/huntarr/$apiLimitFile" ]; then
+        currentApiCounter=$(cat "/config/huntarr/$apiLimitFile")
         if [ $currentApiCounter -ge $huntarrDailyApiSearchLimit ]; then
             log "$arrApp :: Daily API Limit reached... "
             return
@@ -140,8 +155,8 @@ HuntarrProcess () {
         processNumber=$(($processNumber + 1))
 
         # check if API limit has been reached
-        if [ -f "/config/huntarr/api-search-count" ]; then
-            currentApiCounter=$(cat "/config/huntarr/api-search-count")
+        if [ -f "/config/huntarr/$apiLimitFile" ]; then
+            currentApiCounter=$(cat "/config/huntarr/$apiLimitFile")
             if [ $currentApiCounter -ge $huntarrDailyApiSearchLimit ]; then
                 log "$arrApp :: Daily API Limit reached..."
                 break
@@ -178,7 +193,7 @@ HuntarrProcess () {
         fi
 
         # update API search count
-        echo -n "$(($currentApiCounter + 1))" > "/config/huntarr/api-search-count"
+        echo -n "$(($currentApiCounter + 1))" > "/config/huntarr/$apiLimitFile"
 
         # create log folder for searched items
         if [ ! -d "/config/huntarr/$settingsFileName/$arrApp" ]; then
