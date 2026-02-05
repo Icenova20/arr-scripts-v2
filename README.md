@@ -33,6 +33,8 @@ services:
 2. Download any of the following scripts and place them into `/custom-services.d` folder
    - [Queue-Cleaner.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Queue-Cleaner.bash)
      - Script removes downloads that are stuck in queue because they cannot auto-import without intervention
+   - [Huntarr.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Huntarr.bash)
+     - Script provides an automated method of searching for Missing/Cutoff items in Radarr/Sonarr
    - [Radarr-Invalid-Movie-Auto-Cleaner.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Radarr-Invalid-Movie-Auto-Cleaner.bash)
      - Script removes invalid movies that are reported by Radarr... 
    - [Radarr-UnmappedFolderCleaner.bash](https://github.com/RandomNinjaAtk/arr-scripts-v2/blob/main/Radarr-UnmappedFolderCleaner.bash)
