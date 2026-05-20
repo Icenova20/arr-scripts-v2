@@ -52,6 +52,11 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$lidarrMusicVideoTempDownloadPath" ] || [ "$lidarrMusicVideoTempDownloadPath" = "/" ]; then
+		log "ERROR :: lidarrMusicVideoTempDownloadPath is not properly configured. It must be set and cannot be the root directory."
+		exit 1
+	fi
+
 }
 
 settings () {
@@ -260,8 +265,8 @@ CompletedFileMover () {
 
 DownloadVideo () {
     videoUnavailable="false"
-    if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
-        rm -rf "$lidarrMusicVideoTempDownloadPath"/*
+    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
+        rm -rf "${lidarrMusicVideoTempDownloadPath:?}"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
     if tidal-dl-ng dl "$1" | grep "Media not found" | read; then
