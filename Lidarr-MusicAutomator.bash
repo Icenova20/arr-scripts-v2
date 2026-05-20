@@ -123,15 +123,15 @@ VerifyApiAccess () {
   do
     arrApiTest=""
     arrApiVersion=""
-    if [ -z "$arrApiTest" ]; then
+    if [ -z "$arrApiTest" ] || [ "$arrApiTest" == "null" ]; then
       arrApiVersion="v3"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ -z "$arrApiTest" ]; then
+    if [ -z "$arrApiTest" ] || [ "$arrApiTest" == "null" ]; then
       arrApiVersion="v1"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ ! -z "$arrApiTest" ]; then
+    if [ ! -z "$arrApiTest" ] && [ "$arrApiTest" != "null" ]; then
       break
     else
       if [ "$alerted" == "no" ]; then
