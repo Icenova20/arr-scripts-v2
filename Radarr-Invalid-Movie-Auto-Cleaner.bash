@@ -33,8 +33,8 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -59,8 +59,10 @@ InvalidMovieAutoCleanerProcess () {
 
   
     # Process each invalid series tmdb id
+
     moviesData="$(curl -s --header "X-Api-Key:$arrApiKey" --request GET  "$arrUrl/api/v3/movie")"
-    for tmdbid in $(echo $movieTmdbid); do
+    for tmdbid in $(echo "$movieTmdbid"); do
+
         movieData="$(echo "$moviesData" | jq -r ".[] | select(.tmdbId==$tmdbid)")"
         movieId="$(echo "$movieData" | jq -r .id)"
         movieTitle="$(echo "$movieData" | jq -r .title)"
@@ -91,8 +93,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
+    if [ -n "$radarrUrl" ]; then
+      if [ -n "$radarrApiKey" ]; then
         InvalidMovieAutoCleanerProcess
       else
         log "ERROR :: Skipping Radarr, missing API Key..."

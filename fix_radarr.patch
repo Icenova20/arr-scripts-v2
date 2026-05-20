@@ -1,0 +1,12 @@
+<<<<<<< SEARCH
+<<<<<<< ours
+    moviesData="$(curl -s --header "X-Api-Key:$arrApiKey" --request GET  "$arrUrl/api/v3/movie")"
+    for tmdbid in $(echo $movieTmdbid); do
+=======
+    moviesData="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/movie")"
+    for tmdbid in $(echo "$movieTmdbid"); do
+>>>>>>> theirs
+=======
+    moviesData="$(curl -s --header "X-Api-Key:$arrApiKey" --request GET  "$arrUrl/api/v3/movie")"
+    for tmdbid in $(echo "$movieTmdbid"); do
+>>>>>>> REPLACE

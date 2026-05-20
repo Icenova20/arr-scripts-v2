@@ -52,6 +52,11 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$lidarrMusicVideoTempDownloadPath" ] || [ "$lidarrMusicVideoTempDownloadPath" = "/" ]; then
+		log "ERROR :: lidarrMusicVideoTempDownloadPath is not properly configured. It must be set and cannot be the root directory."
+		exit 1
+	fi
+
 }
 
 settings () {
@@ -79,7 +84,7 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
 }
 
 TagMP4 () {
@@ -93,7 +98,7 @@ TagMP4 () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -164,7 +169,7 @@ RemuxToMKV () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -260,8 +265,8 @@ CompletedFileMover () {
 
 DownloadVideo () {
     videoUnavailable="false"
-    if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
-        rm -rf "$lidarrMusicVideoTempDownloadPath"/*
+    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
+        rm -rf "${lidarrMusicVideoTempDownloadPath:?}"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
     if tidal-dl-ng dl "$1" | grep "Media not found" | read; then
@@ -299,7 +304,7 @@ NfoWriter () {
     echo "	<userrating/>" >> "$nfo"
     echo "	<track/>" >> "$nfo"
     echo "	<studio/>" >> "$nfo"
-    if [ ! -z "$lidarrArtistGenres" ]; then
+    if [ -n "$lidarrArtistGenres" ]; then
         for genre in ${!lidarrArtistGenres[@]}; do
             artistGenre="${lidarrArtistGenres[$genre]}"
             echo "	<genre>$artistGenre</genre>" >> "$nfo"
@@ -341,7 +346,7 @@ tidalProcess () {
         videoTitle="$(echo "$videoData" | jq -r .title)"
         videoArtist="$(echo "$videoData" | jq -r .artist.name)"
         videoMainArtistId="$(echo "$videoData" | jq -r .artist.id)"
-        videoExplicit=$(echo $videoData | jq -r .explicit)
+        videoExplicit=$(echo "$videoData" | jq -r .explicit)
         videoDate="$(echo "$videoData" | jq -r ".releaseDate")"
         videoDate="${videoDate:0:10}"
         videoYear="${videoDate:0:4}"
@@ -430,9 +435,6 @@ tidalProcess () {
         fi        
         
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Processing..."
-        #echo "$videoThumbnailUrl"
-        #echo "$videoArtists"
-        #echo "$videoData" | jq -r
         
         DownloadVideo "https://tidal.com/video/$videoId"
         
@@ -492,17 +494,17 @@ for (( ; ; )); do
     if [ "$tidalFailure" = "true" ]; then
         exit
     fi
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
-        lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
+        lidarrArtistIds=$(echo "$lidarrArtists" | jq -r .id)
         lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)
         processCount=0
-        for lidarrArtistId in $(echo $lidarrArtistIds); do
+        for lidarrArtistId in $(echo "$lidarrArtistIds"); do
             processCount=$(( $processCount + 1))
             lidarrArtistData=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist/$lidarrArtistId?apikey=$arrApiKey")
-            lidarrArtistName=$(echo $lidarrArtistData | jq -r .artistName)
-            lidarrArtistMusicbrainzId=$(echo $lidarrArtistData | jq -r .foreignArtistId)
+            lidarrArtistName=$(echo "$lidarrArtistData" | jq -r .artistName)
+            lidarrArtistMusicbrainzId=$(echo "$lidarrArtistData" | jq -r .foreignArtistId)
             lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
             lidarrArtistFolder="$(basename "${lidarrArtistPath}" | cut -d "(" -f 1)"
             lidarrArtistFolder="$(echo "$lidarrArtistFolder" | sed 's/^[ \t]*//;s/[ \t]*$//')"

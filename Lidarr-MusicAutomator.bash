@@ -22,6 +22,12 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$incompleteDownloadPath" ] || [ "$incompleteDownloadPath" = "/" ] || [ -z "$completeDownloadPath" ] || [ "$completeDownloadPath" = "/" ]; then
+		log "ERROR :: Invalid download paths configured. Prevented potential arbitrary file deletion."
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
 }
 
 InstallDependencies () {
@@ -93,7 +99,7 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
 }
 
 ArrWaitForTaskCompletion () {
@@ -131,7 +137,7 @@ VerifyApiAccess () {
       arrApiVersion="v1"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ ! -z "$arrApiTest" ]; then
+    if [ -n "$arrApiTest" ]; then
       break
     else
       if [ "$alerted" == "no" ]; then
@@ -158,7 +164,7 @@ SearchDeezerAlbums () {
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
         diff=1
-        if  [ ! -z "$match" ]; then
+        if  [ -n "$match" ]; then
           diff=0
 
           deezerAlbumTrackCount=$(curl -s "https://api.deezer.com/album/$deezerAlbumId" | jq -r .nb_tracks)
@@ -183,7 +189,7 @@ SearchDeezerAlbums () {
   
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
-            if [ -d "$incompleteDownloadPath" ]; then
+            if [ -n "$incompleteDownloadPath" ] && [ "$incompleteDownloadPath" != "/" ] && [ -d "$incompleteDownloadPath" ]; then
                 rm -rf "$incompleteDownloadPath"
             fi
 
@@ -360,15 +366,15 @@ for (( ; ; )); do
     settings "$f"
     verifyConfig
 
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         SECONDS=0        
         VerifyApiAccess
         ArlSetup
 
         log "Step - Removing previously downloaded items that failed to import..."
-        if [ -d "$completeDownloadPath" ]; then
-            rm -rf "$completeDownloadPath"/*
+        if [ -n "$completeDownloadPath" ] && [ "$completeDownloadPath" != "/" ] && [ -d "$completeDownloadPath" ]; then
+            rm -rf "${completeDownloadPath:?}"/*
         fi
 
         log "Step - Begining Missing search!"
