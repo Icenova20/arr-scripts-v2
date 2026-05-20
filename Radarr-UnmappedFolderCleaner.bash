@@ -60,7 +60,8 @@ UnmappedFolderCleanerProcess () {
 	    return
 	fi
     unmappedFoldersData=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r '.[] | .path as $root | .unmappedFolders[]? | "\($root)|\(.path)"')
-	for data in $(echo "$unmappedFoldersData"); do
+	while IFS= read -r data; do
+	    if [ -z "$data" ]; then continue; fi
 	    root_path="${data%|*}"
 	    folder="${data#*|}"
 
@@ -70,7 +71,7 @@ UnmappedFolderCleanerProcess () {
 	    if [[ "$real_folder" == "$real_root/"* ]] && [[ "$real_folder" != "$real_root" ]] && [[ "$real_folder" != "/" ]]; then
 	        log "Removing $folder"
 		    if [ -d "$folder" ]; then
-		    rm -rf "$folder"
+		        rm -rf "$folder"
 		    else
 			    log "ERROR :: Cannot Delete \"$folder\", directory not found, skipping..."
                 log "ERROR :: Check to make sure Radarr root folder is mapped properly to this container..."
@@ -78,7 +79,7 @@ UnmappedFolderCleanerProcess () {
 	    else
 	        log "ERROR :: SECURITY WARNING: \"$folder\" is not a valid sub-directory of \"$root_path\". Skipping deletion."
 	    fi
-	done
+	done <<< "$unmappedFoldersData"
 	IFS="$OLDIFS"
  }
 
