@@ -57,6 +57,12 @@ verifyConfig () {
 		exit 1
 	fi
 
+	if [ -z "$tidalToken" ]; then
+		log "Script requires tidalToken to be set in settings.conf"
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
 }
 
 settings () {
@@ -338,8 +344,8 @@ NfoWriter () {
 
 tidalProcess () {
     tidalArtistId=$1
-    # curl -s "https://api.tidal.com/v1/artists/14123/videos?countryCode=US&offset=0&limit=1000" -H "x-tidal-token: CzET4vdadNUFQ5JU" | jq -r
-    vidoesData=$(curl -s "https://api.tidal.com/v1/artists/${tidalArtistId}/videos?countryCode=${tidalCountryCode}&offset=0&limit=1000" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+    # curl -s "https://api.tidal.com/v1/artists/14123/videos?countryCode=US&offset=0&limit=1000" -H "x-tidal-token: ${tidalToken}" | jq -r
+    vidoesData=$(curl -s "https://api.tidal.com/v1/artists/${tidalArtistId}/videos?countryCode=${tidalCountryCode}&offset=0&limit=1000" -H "x-tidal-token: ${tidalToken}")
     videoIds="$(echo "$vidoesData" | jq -r ".items | sort_by(.releaseDate) | reverse | .[].id")"
     videoIdsCount=$(echo "$videoIds" | wc -l)
     videoIdProcess=0
