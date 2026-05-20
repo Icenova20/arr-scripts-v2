@@ -121,8 +121,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
+    if [ -n "$radarrUrl" ]; then
+      if [ -n "$radarrApiKey" ]; then
         QueueCleanerProcess "radarr"
       else
         log "ERROR :: Skipping Radarr, missing API Key..."
@@ -130,8 +130,8 @@ for (( ; ; )); do
     else
       log "ERROR :: Skipping Radarr, missing URL..."
     fi
-    if [ ! -z "$sonarrUrl" ]; then
-      if [ ! -z "$sonarrApiKey" ]; then
+    if [ -n "$sonarrUrl" ]; then
+      if [ -n "$sonarrApiKey" ]; then
         QueueCleanerProcess "sonarr"
       else
         log "ERROR :: Skipping Sonarr, missing API Key..."
