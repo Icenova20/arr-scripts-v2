@@ -268,7 +268,7 @@ CompletedFileMover () {
 
 DownloadVideo () {
     videoUnavailable="false"
-    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
+    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ] && [ "$(realpath "$lidarrMusicVideoTempDownloadPath" 2>/dev/null)" != "/" ]; then
         rm -rf "${lidarrMusicVideoTempDownloadPath:?}"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
