@@ -52,7 +52,7 @@ verifyConfig () {
 
 DailySeriesTrimmerProcess () {
     log "Get Sonarr Series List"
-    sonarrSeriesList=$(curl -s --header "X-Api-Key:"${arrApiKey} --request GET  "$arrUrl/api/v3/series")
+    sonarrSeriesList=$(curl -s --header "X-Api-Key: $arrApiKey" --request GET  "$arrUrl/api/v3/series")
     sonarrSeriesIds=$(echo "${sonarrSeriesList}" | jq -r '.[] |.id')
     sonarrSeriesTotal=$(echo "${sonarrSeriesIds}" | wc -l)
 
