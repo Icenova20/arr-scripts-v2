@@ -53,6 +53,10 @@ DailySeriesTrimmerProcess () {
     sonarrSeriesList=$(curl -s --header "X-Api-Key:"${arrApiKey} --request GET  "$arrUrl/api/v3/series")
     sonarrSeriesIds=$(echo "${sonarrSeriesList}" | jq -r '.[] |.id')
     sonarrSeriesTotal=$(echo "${sonarrSeriesIds}" | wc -l)
+
+    # Fetch all tags once to reduce API calls
+    allTagsData=$(curl -s "$arrUrl/api/v3/tag?apikey=$arrApiKey")
+
     loopCount=0
     for id in $(echo "$sonarrSeriesIds"); do
         loopCount=$(( $loopCount + 1 ))
@@ -67,7 +71,7 @@ DailySeriesTrimmerProcess () {
         else
             tagMatch="false"
             for tagId in $seriesTags; do
-                tagLabel="$(curl -s "$arrUrl/api/v3/tag/$tagId?apikey=$arrApiKey" | jq -r ".label")"
+                tagLabel="$(echo "$allTagsData" | jq -r ".[] | select(.id == $tagId) | .label")"
                 if  [ "$sonarrSeriesEpisodeTrimmerTag" == "$tagLabel" ]; then
                     tagMatch="true"
                     break
