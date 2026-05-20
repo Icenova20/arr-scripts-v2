@@ -65,8 +65,8 @@ UnmappedFolderCleanerProcess () {
 	    root_path="${data%|*}"
 	    folder="${data#*|}"
 
-	    real_root=$(realpath -m "$root_path")
-	    real_folder=$(realpath -m "$folder")
+	    real_root=$(realpath "$root_path" 2>/dev/null) || real_root="$root_path"
+	    real_folder=$(realpath "$folder" 2>/dev/null) || real_folder="$folder"
 
 	    if [[ "$real_folder" == "$real_root/"* ]] && [[ "$real_folder" != "$real_root" ]] && [[ "$real_folder" != "/" ]]; then
 	        log "Removing $folder"
