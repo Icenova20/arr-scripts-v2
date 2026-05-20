@@ -260,8 +260,8 @@ CompletedFileMover () {
 
 DownloadVideo () {
     videoUnavailable="false"
-    if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
-        rm -rf "$lidarrMusicVideoTempDownloadPath"/*
+    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
+        rm -rf "${lidarrMusicVideoTempDownloadPath:?}"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
     if tidal-dl-ng dl "$1" | grep "Media not found" | read; then
