@@ -34,8 +34,8 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -53,21 +53,25 @@ DailySeriesTrimmerProcess () {
     sonarrSeriesList=$(curl -s --header "X-Api-Key:"${arrApiKey} --request GET  "$arrUrl/api/v3/series")
     sonarrSeriesIds=$(echo "${sonarrSeriesList}" | jq -r '.[] |.id')
     sonarrSeriesTotal=$(echo "${sonarrSeriesIds}" | wc -l)
+
+    # Fetch all tags once to reduce API calls
+    allTagsData=$(curl -s "$arrUrl/api/v3/tag?apikey=$arrApiKey")
+
     loopCount=0
-    for id in $(echo $sonarrSeriesIds); do
+    for id in $(echo "$sonarrSeriesIds"); do
         loopCount=$(( $loopCount + 1 ))
         seriesId=$id
         seriesData=$(curl -s "$arrUrl/api/v3/series/$seriesId?apikey=$arrApiKey")
-        seriesTitle=$(echo $seriesData | jq -r ".title")
-        seriesType=$(echo $seriesData | jq -r ".seriesType")
-        seriesTags=$(echo $seriesData | jq -r ".tags[]")
+        seriesTitle=$(echo "$seriesData" | jq -r ".title")
+        seriesType=$(echo "$seriesData" | jq -r ".seriesType")
+        seriesTags=$(echo "$seriesData" | jq -r ".tags[]")
         # If sonarr series is tagged, match via tag to support series that are not considered daily
         if [ -z "$sonarrSeriesEpisodeTrimmerTag" ]; then
             tagMatch="false"
         else
             tagMatch="false"
             for tagId in $seriesTags; do
-                tagLabel="$(curl -s "$arrUrl/api/v3/tag/$tagId?apikey=$arrApiKey" | jq -r ".label")"
+                tagLabel="$(echo "$allTagsData" | jq -r ".[] | select(.id == $tagId) | .label")"
                 if  [ "$sonarrSeriesEpisodeTrimmerTag" == "$tagLabel" ]; then
                     tagMatch="true"
                     break
@@ -150,8 +154,8 @@ for (( ; ; )); do
         log "Processing \"$f\" config file"
         settings "$f"
         verifyConfig
-        if [ ! -z "$arrUrl" ]; then
-            if [ ! -z "$arrApiKey" ]; then
+        if [ -n "$arrUrl" ]; then
+            if [ -n "$arrApiKey" ]; then
                 DailySeriesTrimmerProcess
             else
                 log "ERROR :: Skipping Sonarr, missing API Key..."

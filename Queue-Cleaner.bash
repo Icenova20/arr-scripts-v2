@@ -41,8 +41,8 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 
@@ -95,7 +95,7 @@ QueueCleanerProcess () {
   if [ $arrQueueIdsCount -eq 0 ]; then
     log "$arrApp :: No items in queue to clean up"
   else
-    for queueId in $(echo $arrQueuedIds); do
+    for queueId in $(echo "$arrQueuedIds"); do
       arrQueueItemData="$(echo "$arrQueueData" | jq -r "select(.id==$queueId)")"
       arrQueueItemTitle="$(echo "$arrQueueItemData" | jq -r .title)"
 	  log "$arrApp :: $queueId ($arrQueueItemTitle) :: Removing Failed Queue Item from $arrName..."
@@ -121,8 +121,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
+    if [ -n "$radarrUrl" ]; then
+      if [ -n "$radarrApiKey" ]; then
         QueueCleanerProcess "radarr"
       else
         log "ERROR :: Skipping Radarr, missing API Key..."
@@ -130,8 +130,8 @@ for (( ; ; )); do
     else
       log "ERROR :: Skipping Radarr, missing URL..."
     fi
-    if [ ! -z "$sonarrUrl" ]; then
-      if [ ! -z "$sonarrApiKey" ]; then
+    if [ -n "$sonarrUrl" ]; then
+      if [ -n "$sonarrApiKey" ]; then
         QueueCleanerProcess "sonarr"
       else
         log "ERROR :: Skipping Sonarr, missing API Key..."
