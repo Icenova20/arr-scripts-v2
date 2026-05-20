@@ -62,7 +62,6 @@ verifyConfig () {
 		log "Sleeping (infinity)"
 		sleep infinity
 	fi
-
 }
 
 settings () {
