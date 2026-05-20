@@ -4,7 +4,7 @@ scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
 InstallDependencies () {
-  if apk --no-cache list | grep installed | grep ffmpeg | read; then
+  if apk --no-cache list | grep installed | grep py3-pip | read; then
     log "Dependencies already installed, skipping..."
   else
     log "Installing script dependencies...."
@@ -14,7 +14,9 @@ InstallDependencies () {
         jq \
         xq \
         libstdc++ \
-        mkvtoolnix
+        mkvtoolnix \
+        python3 \
+        py3-pip
     log "done"
     apk add atomicparsley --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
     python3 -m pip install tidal-dl-ng --upgrade --break-system-packages
