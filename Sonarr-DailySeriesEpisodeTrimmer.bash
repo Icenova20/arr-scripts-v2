@@ -58,9 +58,9 @@ DailySeriesTrimmerProcess () {
         loopCount=$(( $loopCount + 1 ))
         seriesId=$id
         seriesData=$(curl -s "$arrUrl/api/v3/series/$seriesId?apikey=$arrApiKey")
-        seriesTitle=$(echo $seriesData | jq -r ".title")
-        seriesType=$(echo $seriesData | jq -r ".seriesType")
-        seriesTags=$(echo $seriesData | jq -r ".tags[]")
+        seriesTitle=$(echo "$seriesData" | jq -r ".title")
+        seriesType=$(echo "$seriesData" | jq -r ".seriesType")
+        seriesTags=$(echo "$seriesData" | jq -r ".tags[]")
         # If sonarr series is tagged, match via tag to support series that are not considered daily
         if [ -z "$sonarrSeriesEpisodeTrimmerTag" ]; then
             tagMatch="false"
