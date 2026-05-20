@@ -57,14 +57,30 @@ UnmappedFolderCleanerProcess () {
 	    log "No cleanup required, exiting..."
 	    return
 	fi
+    rootFolders=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r ".[].path")
     unmappedFolders=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r ".[].unmappedFolders[].path")
 	for folder in $(echo "$unmappedFolders"); do
+        valid="false"
+        real_folder=$(realpath "$folder" 2>/dev/null) || real_folder="$folder"
+        for root in $(echo "$rootFolders"); do
+            real_root=$(realpath "$root" 2>/dev/null) || real_root="$root"
+            if [[ "$real_folder" == "$real_root"/* ]]; then
+                valid="true"
+                break
+            fi
+        done
+
+        if [ "$valid" != "true" ]; then
+            log "ERROR :: Security violation: \"$folder\" is not within any mapped root folder, skipping..."
+            continue
+        fi
+
 	    log "Removing $folder"
 		if [ -d "$folder" ]; then
 	    	rm -rf "$folder"
 		else
-			log "ERROR :: Cannot Delete \"$foler\", directory not found, skipping..."
-            log "ERROR :: Check to make sure Radarr root folder is mapped properly to this container..."
+			log "ERROR :: Cannot Delete \"$folder\", directory not found, skipping..."
+            log "ERROR :: Check to make sure Sonarr root folder is mapped properly to this container..."
 		fi
 	done
 	IFS="$OLDIFS"
