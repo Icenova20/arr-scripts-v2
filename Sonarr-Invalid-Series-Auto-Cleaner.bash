@@ -33,8 +33,8 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -62,7 +62,7 @@ InvalidAutoCleanerProcess () {
   fi
   
   # Process each invalid series tvdb id
-  for tvdbId in $(echo $seriesTvdbId); do
+  for tvdbId in $(echo "$seriesTvdbId"); do
       seriesData="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/series" | jq -r ".[] | select(.tvdbId==$tvdbId)")"
       seriesId="$(echo "$seriesData" | jq -r .id)"
       seriesTitle="$(echo "$seriesData" | jq -r .title)"

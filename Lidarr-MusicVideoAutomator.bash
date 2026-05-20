@@ -79,7 +79,7 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
 }
 
 TagMP4 () {
@@ -341,7 +341,7 @@ tidalProcess () {
         videoTitle="$(echo "$videoData" | jq -r .title)"
         videoArtist="$(echo "$videoData" | jq -r .artist.name)"
         videoMainArtistId="$(echo "$videoData" | jq -r .artist.id)"
-        videoExplicit=$(echo $videoData | jq -r .explicit)
+        videoExplicit=$(echo "$videoData" | jq -r .explicit)
         videoDate="$(echo "$videoData" | jq -r ".releaseDate")"
         videoDate="${videoDate:0:10}"
         videoYear="${videoDate:0:4}"
@@ -495,14 +495,14 @@ for (( ; ; )); do
     if [ ! -z "$arrUrl" ]; then
       if [ ! -z "$arrApiKey" ]; then
         lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
-        lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
+        lidarrArtistIds=$(echo "$lidarrArtists" | jq -r .id)
         lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)
         processCount=0
-        for lidarrArtistId in $(echo $lidarrArtistIds); do
+        for lidarrArtistId in $(echo "$lidarrArtistIds"); do
             processCount=$(( $processCount + 1))
             lidarrArtistData=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist/$lidarrArtistId?apikey=$arrApiKey")
-            lidarrArtistName=$(echo $lidarrArtistData | jq -r .artistName)
-            lidarrArtistMusicbrainzId=$(echo $lidarrArtistData | jq -r .foreignArtistId)
+            lidarrArtistName=$(echo "$lidarrArtistData" | jq -r .artistName)
+            lidarrArtistMusicbrainzId=$(echo "$lidarrArtistData" | jq -r .foreignArtistId)
             lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
             lidarrArtistFolder="$(basename "${lidarrArtistPath}" | cut -d "(" -f 1)"
             lidarrArtistFolder="$(echo "$lidarrArtistFolder" | sed 's/^[ \t]*//;s/[ \t]*$//')"

@@ -34,8 +34,8 @@ logfileSetup () {
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -54,13 +54,13 @@ DailySeriesTrimmerProcess () {
     sonarrSeriesIds=$(echo "${sonarrSeriesList}" | jq -r '.[] |.id')
     sonarrSeriesTotal=$(echo "${sonarrSeriesIds}" | wc -l)
     loopCount=0
-    for id in $(echo $sonarrSeriesIds); do
+    for id in $(echo "$sonarrSeriesIds"); do
         loopCount=$(( $loopCount + 1 ))
         seriesId=$id
         seriesData=$(curl -s "$arrUrl/api/v3/series/$seriesId?apikey=$arrApiKey")
-        seriesTitle=$(echo $seriesData | jq -r ".title")
-        seriesType=$(echo $seriesData | jq -r ".seriesType")
-        seriesTags=$(echo $seriesData | jq -r ".tags[]")
+        seriesTitle=$(echo "$seriesData" | jq -r ".title")
+        seriesType=$(echo "$seriesData" | jq -r ".seriesType")
+        seriesTags=$(echo "$seriesData" | jq -r ".tags[]")
         # If sonarr series is tagged, match via tag to support series that are not considered daily
         if [ -z "$sonarrSeriesEpisodeTrimmerTag" ]; then
             tagMatch="false"
