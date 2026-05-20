@@ -430,9 +430,6 @@ tidalProcess () {
         fi        
         
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Processing..."
-        #echo "$videoThumbnailUrl"
-        #echo "$videoArtists"
-        #echo "$videoData" | jq -r
         
         DownloadVideo "https://tidal.com/video/$videoId"
         
