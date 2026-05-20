@@ -93,7 +93,7 @@ TagMP4 () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -164,7 +164,7 @@ RemuxToMKV () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -299,7 +299,7 @@ NfoWriter () {
     echo "	<userrating/>" >> "$nfo"
     echo "	<track/>" >> "$nfo"
     echo "	<studio/>" >> "$nfo"
-    if [ ! -z "$lidarrArtistGenres" ]; then
+    if [ -n "$lidarrArtistGenres" ]; then
         for genre in ${!lidarrArtistGenres[@]}; do
             artistGenre="${lidarrArtistGenres[$genre]}"
             echo "	<genre>$artistGenre</genre>" >> "$nfo"
@@ -492,8 +492,8 @@ for (( ; ; )); do
     if [ "$tidalFailure" = "true" ]; then
         exit
     fi
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
         lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
         lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)

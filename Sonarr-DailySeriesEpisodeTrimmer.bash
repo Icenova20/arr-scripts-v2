@@ -150,8 +150,8 @@ for (( ; ; )); do
         log "Processing \"$f\" config file"
         settings "$f"
         verifyConfig
-        if [ ! -z "$arrUrl" ]; then
-            if [ ! -z "$arrApiKey" ]; then
+        if [ -n "$arrUrl" ]; then
+            if [ -n "$arrApiKey" ]; then
                 DailySeriesTrimmerProcess
             else
                 log "ERROR :: Skipping Sonarr, missing API Key..."
