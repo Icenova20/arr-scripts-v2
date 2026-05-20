@@ -22,6 +22,12 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$incompleteDownloadPath" ] || [ "$incompleteDownloadPath" = "/" ] || [ -z "$completeDownloadPath" ] || [ "$completeDownloadPath" = "/" ]; then
+		log "ERROR :: Invalid download paths configured. Prevented potential arbitrary file deletion."
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
 }
 
 InstallDependencies () {
@@ -183,7 +189,7 @@ SearchDeezerAlbums () {
   
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
-            if [ -d "$incompleteDownloadPath" ]; then
+            if [ -n "$incompleteDownloadPath" ] && [ "$incompleteDownloadPath" != "/" ] && [ -d "$incompleteDownloadPath" ]; then
                 rm -rf "$incompleteDownloadPath"
             fi
 
@@ -367,8 +373,8 @@ for (( ; ; )); do
         ArlSetup
 
         log "Step - Removing previously downloaded items that failed to import..."
-        if [ -d "$completeDownloadPath" ]; then
-            rm -rf "$completeDownloadPath"/*
+        if [ -n "$completeDownloadPath" ] && [ "$completeDownloadPath" != "/" ] && [ -d "$completeDownloadPath" ]; then
+            rm -rf "${completeDownloadPath:?}"/*
         fi
 
         log "Step - Begining Missing search!"
