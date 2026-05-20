@@ -71,7 +71,7 @@ UnmappedFolderCleanerProcess () {
 	    if [[ "$real_folder" == "$real_root/"* ]] && [[ "$real_folder" != "$real_root" ]] && [[ "$real_folder" != "/" ]]; then
 	        log "Removing $folder"
 		    if [ -d "$folder" ]; then
-		        rm -rf "$folder"
+		        rm -rf "${folder:?}"
 		    else
 			    log "ERROR :: Cannot Delete \"$folder\", directory not found, skipping..."
                 log "ERROR :: Check to make sure Radarr root folder is mapped properly to this container..."

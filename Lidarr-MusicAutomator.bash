@@ -192,7 +192,7 @@ SearchDeezerAlbums () {
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
             if [ -n "$incompleteDownloadPath" ] && [ "$incompleteDownloadPath" != "/" ] && [ -d "$incompleteDownloadPath" ]; then
-                rm -rf "$incompleteDownloadPath"
+                rm -rf "${incompleteDownloadPath:?}"
             fi
 
             if [ ! -d "$completeDownloadPath/$downloadAlbumFolderName" ]; then
