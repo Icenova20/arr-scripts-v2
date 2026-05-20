@@ -227,8 +227,8 @@ for (( ; ; )); do
     settingsFileName=$(basename "${f%.*}")
     settings "$f"
     verifyConfig "$f"
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
+    if [ -n "$radarrUrl" ]; then
+      if [ -n "$radarrApiKey" ]; then
         HuntarrRadarr
         HuntarrProcess
       else
@@ -237,8 +237,8 @@ for (( ; ; )); do
     else
       log "ERROR :: Skipping Radarr, missing URL..."
     fi
-    if [ ! -z "$sonarrUrl" ]; then
-      if [ ! -z "$sonarrApiKey" ]; then
+    if [ -n "$sonarrUrl" ]; then
+      if [ -n "$sonarrApiKey" ]; then
         HuntarrSonarr
         HuntarrProcess
       else

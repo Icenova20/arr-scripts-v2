@@ -131,7 +131,7 @@ VerifyApiAccess () {
       arrApiVersion="v1"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ ! -z "$arrApiTest" ]; then
+    if [ -n "$arrApiTest" ]; then
       break
     else
       if [ "$alerted" == "no" ]; then
@@ -158,7 +158,7 @@ SearchDeezerAlbums () {
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
         diff=1
-        if  [ ! -z "$match" ]; then
+        if  [ -n "$match" ]; then
           diff=0
 
           deezerAlbumTrackCount=$(curl -s "https://api.deezer.com/album/$deezerAlbumId" | jq -r .nb_tracks)
@@ -360,8 +360,8 @@ for (( ; ; )); do
     settings "$f"
     verifyConfig
 
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         SECONDS=0        
         VerifyApiAccess
         ArlSetup
