@@ -30,6 +30,8 @@ echo "-----------------------------------"
 # Test case 1: Script is enabled
 echo "Test 1: Script is enabled (enableLidarrMusicAutomator=\"true\")"
 enableLidarrMusicAutomator="true"
+incompleteDownloadPath="/some/path"
+completeDownloadPath="/some/other/path"
 OUTPUT=$(verifyConfig 2>&1)
 if [[ -z "$OUTPUT" ]]; then
   echo "  ✅ Test 1 Passed: No output as expected."
