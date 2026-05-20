@@ -60,8 +60,8 @@ UnmappedFolderCleanerProcess () {
     unmappedFolders=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r ".[].unmappedFolders[].path")
 	for folder in $(echo "$unmappedFolders"); do
 	    log "Removing $folder"
-		if [ -d "$folder" ]; then
-	    	rm -rf "$folder"
+		if [ -n "$folder" ] && [ -d "$folder" ] && [ "$(realpath "$folder" 2>/dev/null)" != "/" ]; then
+		rm -rf "${folder:?}"
 		else
 			log "ERROR :: Cannot Delete \"$foler\", directory not found, skipping..."
             log "ERROR :: Check to make sure Radarr root folder is mapped properly to this container..."

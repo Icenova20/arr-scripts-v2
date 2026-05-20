@@ -183,8 +183,8 @@ SearchDeezerAlbums () {
   
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
-            if [ -d "$incompleteDownloadPath" ]; then
-                rm -rf "$incompleteDownloadPath"
+            if [ -n "$incompleteDownloadPath" ] && [ -d "$incompleteDownloadPath" ] && [ "$(realpath "$incompleteDownloadPath" 2>/dev/null)" != "/" ]; then
+                rm -rf "${incompleteDownloadPath:?}"
             fi
 
             if [ ! -d "$completeDownloadPath/$downloadAlbumFolderName" ]; then
@@ -367,8 +367,8 @@ for (( ; ; )); do
         ArlSetup
 
         log "Step - Removing previously downloaded items that failed to import..."
-        if [ -d "$completeDownloadPath" ]; then
-            rm -rf "$completeDownloadPath"/*
+        if [ -n "$completeDownloadPath" ] && [ -d "$completeDownloadPath" ] && [ "$(realpath "$completeDownloadPath" 2>/dev/null)" != "/" ]; then
+            rm -rf "${completeDownloadPath:?}"/*
         fi
 
         log "Step - Begining Missing search!"
