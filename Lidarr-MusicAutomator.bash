@@ -59,6 +59,7 @@ ArlSetup () {
     if [ ! -d "$deemixFolder" ]; then
         log "Creating Deemix Config folder"
         mkdir -p "$deemixFolder"
+        chown ${PUID:-1000}:${PGID:-1000} "$deemixFolder"
     fi
     if [ -f "$deemixFolder/.arl" ]; then
         log "Deleting ARL"
@@ -93,6 +94,7 @@ logfileSetup () {
   
   if [ ! -f "$dockerPath/$logFileName" ]; then
     echo "" > "$dockerPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerPath/$logFileName"
     chmod 666 "$dockerPath/$logFileName"
   fi
 }
@@ -197,6 +199,7 @@ SearchDeezerAlbums () {
                 # delete temporary download location if needed
                 if [ ! -d "$incompleteDownloadPath" ]; then
                     mkdir -p "$incompleteDownloadPath"
+                    chown ${PUID:-1000}:${PGID:-1000} "$incompleteDownloadPath"
                 fi
 
                 # download tracks
@@ -205,12 +208,14 @@ SearchDeezerAlbums () {
                 # Create import location
                 if [ ! -d "$completeDownloadPath" ]; then
                     mkdir -p "$completeDownloadPath"
+                    chown ${PUID:-1000}:${PGID:-1000} "$completeDownloadPath"
                     chmod 777 -R "$completeDownloadPath"
                 fi
 
                 # Create import location album folder
                 if [ ! -d "$completeDownloadPath/$downloadAlbumFolderName" ]; then
                     mkdir -p "$completeDownloadPath/$downloadAlbumFolderName"
+                    chown ${PUID:-1000}:${PGID:-1000} "$completeDownloadPath/$downloadAlbumFolderName"
                 fi
 
                 # Move downloaded files to import location album folder
@@ -228,6 +233,7 @@ SearchDeezerAlbums () {
 
             if [ ! -d "$completedSearchIdLocation" ]; then
                 mkdir -p "$completedSearchIdLocation"
+                chown ${PUID:-1000}:${PGID:-1000} "$completedSearchIdLocation"
                 chmod 777 -R "$completedSearchIdLocation"
             fi
 
@@ -327,6 +333,7 @@ LidarrWantedSearch () {
 
         if [ ! -d "$completedSearchIdLocation" ]; then
             mkdir -p "$completedSearchIdLocation"
+            chown ${PUID:-1000}:${PGID:-1000} "$completedSearchIdLocation"
             chmod 777 -R "$completedSearchIdLocation"
         fi
 

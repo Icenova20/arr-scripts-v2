@@ -19,7 +19,7 @@ InstallDependencies () {
         py3-pip
     log "done"
     apk add atomicparsley --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
-    python3 -m pip install tidal-dl-ng --upgrade --break-system-packages
+    python3 -m pip install tidal-dl-ng-For-DJ --upgrade --break-system-packages
   fi
 }
 
@@ -29,8 +29,8 @@ ConfigureTidalDl () {
     tidal-dl-ng cfg format_video "{track_title}"
     tidal-dl-ng cfg path_binary_ffmpeg /usr/bin/ffmpeg
     tidal-dl-ng cfg download_base_path "$lidarrMusicVideoTempDownloadPath"
-    if [ -f /root/.config/tidal_dl_ng/token.json ]; then
-        if cat "/root/.config/tidal_dl_ng/token.json" | grep "null" | read;  then 
+    if [ -f /root/.config/tidal_dl_ng-dev/token.json ]; then
+        if cat "/root/.config/tidal_dl_ng-dev/token.json" | grep "null" | read;  then 
             log "tidal-dl-ng requires authentication, authenticate now:"
             log "login manually using the following command: tidal-dl-ng login"
             tidalFailure="true"
@@ -78,6 +78,7 @@ logfileSetup () {
   
   if [ ! -f "$dockerPath/logs/$logFileName" ]; then
     echo "" > "$dockerPath/logs/$logFileName"
+  chown ${PUID:-1000}:${PGID:-1000} "$dockerPath/logs/$logFileName"
     chmod 666 "$dockerPath/logs/$logFileName"
   fi
 }
@@ -212,12 +213,14 @@ CompletedFileMover () {
     if [ ! -d "$lidarrMusicVideoLibrary" ]; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Library Folder"
         mkdir -p "$lidarrMusicVideoLibrary"
+        chown ${PUID:-1000}:${PGID:-1000} "$lidarrMusicVideoLibrary"
         chmod 777 "$lidarrMusicVideoLibrary"
     fi
 
     if [ ! -d "$lidarrMusicVideoLibrary/$lidarrArtistFolder" ]; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Artist Folder: $lidarrArtistFolder"
         mkdir -p "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
+        chown ${PUID:-1000}:${PGID:-1000} "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
         chmod 777 "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
     fi
 
@@ -458,6 +461,7 @@ tidalProcess () {
         if [ ! -d "$logFolder" ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating log folder: $logFolder"
             mkdir -p "$logFolder"
+            chown ${PUID:-1000}:${PGID:-1000} "$logFolder"
             chmod 777 "$logFolder"
         fi
 
