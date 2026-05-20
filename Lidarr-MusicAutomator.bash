@@ -217,7 +217,7 @@ SearchDeezerAlbums () {
             fi
 
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Notifying Lidarr to Import \"$downloadAlbumFolderName\""
-            LidarrProcessIt=$(curl -s "$arrUrl/api/v1/command" --header "X-Api-Key:"${arrApiKey} -H "Content-Type: application/json" --data "{\"name\":\"DownloadedAlbumsScan\", \"path\":\"$completeDownloadPath/$downloadAlbumFolderName\"}")
+            LidarrProcessIt=$(curl -s "$arrUrl/api/v1/command" --header "X-Api-Key: $arrApiKey" -H "Content-Type: application/json" --data "{\"name\":\"DownloadedAlbumsScan\", \"path\":\"$completeDownloadPath/$downloadAlbumFolderName\"}")
             touch /config/found
 
             if [ ! -d "$completedSearchIdLocation" ]; then
