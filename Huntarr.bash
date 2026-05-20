@@ -209,49 +209,51 @@ HuntarrProcess () {
 }
 
 
-for (( ; ; )); do
-  let i++
-  logfileSetup
-  log "Starting..."
-  confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
-  confFileCount=$(echo "$confFiles" | wc -l)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  for (( ; ; )); do
+    let i++
+    logfileSetup
+    log "Starting..."
+    confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+    confFileCount=$(echo "$confFiles" | wc -l)
 
-  if [ -z "$confFiles" ]; then
-      log "ERROR :: No config files found, exiting..."
-      exit
-  fi
+    if [ -z "$confFiles" ]; then
+        log "ERROR :: No config files found, exiting..."
+        exit
+    fi
 
-  for f in $confFiles; do
-    count=$(($count+1))
-    log "Processing \"$f\" config file"
-    settingsFileName=$(basename "${f%.*}")
-    settings "$f"
-    verifyConfig "$f"
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
-        HuntarrRadarr
-        HuntarrProcess
+    for f in $confFiles; do
+      count=$(($count+1))
+      log "Processing \"$f\" config file"
+      settingsFileName=$(basename "${f%.*}")
+      settings "$f"
+      verifyConfig "$f"
+      if [ ! -z "$radarrUrl" ]; then
+        if [ ! -z "$radarrApiKey" ]; then
+          HuntarrRadarr
+          HuntarrProcess
+        else
+          log "ERROR :: Skipping Radarr, missing API Key..."
+        fi
       else
-        log "ERROR :: Skipping Radarr, missing API Key..."
+        log "ERROR :: Skipping Radarr, missing URL..."
       fi
-    else
-      log "ERROR :: Skipping Radarr, missing URL..."
-    fi
-    if [ ! -z "$sonarrUrl" ]; then
-      if [ ! -z "$sonarrApiKey" ]; then
-        HuntarrSonarr
-        HuntarrProcess
+      if [ ! -z "$sonarrUrl" ]; then
+        if [ ! -z "$sonarrApiKey" ]; then
+          HuntarrSonarr
+          HuntarrProcess
+        else
+          log "ERROR :: Skipping Sonarr, missing API Key..."
+        fi
       else
-        log "ERROR :: Skipping Sonarr, missing API Key..."
+        log "ERROR :: Skipping Sonarr, missing URL..."
       fi
-    else
-      log "ERROR :: Skipping Sonarr, missing URL..."
-    fi
+    done
+
+    log "Sleeping $huntarrScriptInterval..."
+    sleep $huntarrScriptInterval
+
   done
 
-  log "Sleeping $huntarrScriptInterval..."
-  sleep $huntarrScriptInterval
-
-done
-
-exit
+  exit
+fi
