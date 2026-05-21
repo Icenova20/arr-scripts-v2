@@ -13,13 +13,15 @@ InstallDependencies () {
         ffmpeg \
         jq \
         xq \
-        libstdc++ \
-        mkvtoolnix \
+        git \
+        opus-tools \
         python3 \
-        py3-pip
+        py3-pip \
+        libstdc++ \
+        mkvtoolnix
     log "done"
     apk add atomicparsley --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
-    python3 -m pip install tidal-dl-ng-For-DJ --upgrade --break-system-packages
+    python3 -m pip install tidaler --upgrade --break-system-packages
   fi
 }
 
