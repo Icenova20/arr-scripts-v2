@@ -153,6 +153,6 @@ for (( ; ; )); do
     [ ! -z "$radarrUrl" ] && [ ! -z "$radarrApiKey" ] && ScoreCleanerProcess "radarr"
     [ ! -z "$sonarrUrl" ] && [ ! -z "$sonarrApiKey" ] && ScoreCleanerProcess "sonarr"
   done
-  log "Sleeping $queueCleanerScriptInterval..."
+  log "Sleeping $scoreCleanerScriptInterval..."
   sleep $scoreCleanerScriptInterval
 done
