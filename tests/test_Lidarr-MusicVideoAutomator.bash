@@ -25,6 +25,8 @@ sleep() {
 source <(sed -n '/^verifyConfig () {/,/^}/p' "$SCRIPT_PATH")
 
 test_failed=0
+export lidarrMusicVideoTempDownloadPath="/downloads/temp"
+export tidalToken="mock_token"
 
 echo "Running tests for verifyConfig..."
 

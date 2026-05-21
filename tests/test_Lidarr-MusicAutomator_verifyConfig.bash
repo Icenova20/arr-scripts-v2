@@ -23,6 +23,8 @@ fi
 source <(awk '/^verifyConfig \(\) \{/{flag=1} flag; /^\}/{if(flag) {flag=0; print ""; exit}}' "$SCRIPT_PATH")
 
 FAILURES=0
+incompleteDownloadPath="/downloads/incomplete"
+completeDownloadPath="/downloads/complete"
 
 echo "Running tests for verifyConfig..."
 echo "-----------------------------------"
