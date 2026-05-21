@@ -15,6 +15,7 @@ logfileSetup () {
 
   if [ ! -d "$dockerLogPath" ]; then
     mkdir -p "$dockerLogPath"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath"
     chmod 777 "$dockerLogPath"
   fi
 
@@ -27,14 +28,15 @@ logfileSetup () {
   
   if [ ! -f "$dockerLogPath/$logFileName" ]; then
     echo "" > "$dockerLogPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath/$logFileName"
     chmod 666 "$dockerLogPath/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -54,7 +56,7 @@ verifyConfig () {
 InvalidAutoCleanerProcess () {
   
   # Get invalid series tvdb id's
-  seriesTvdbId="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/health" | jq -r '.[] | select(.source=="RemovedSeriesCheck") | select(.type=="error")' | grep "message" | grep -o '[[:digit:]]*')"
+  seriesTvdbId="$(curl -s --header "X-Api-Key: $arrApiKey" --request GET  "$arrUrl/api/v3/health" | jq -r '.[] | select(.source=="RemovedSeriesCheck") | select(.type=="error")' | grep "message" | grep -o '[[:digit:]]*')"
   
   if [ -z "$seriesTvdbId" ]; then
     log "No invalid series (tvdbid) reported by Sonarr health check, skipping..."
@@ -62,8 +64,8 @@ InvalidAutoCleanerProcess () {
   fi
   
   # Process each invalid series tvdb id
-  for tvdbId in $(echo $seriesTvdbId); do
-      seriesData="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/series" | jq -r ".[] | select(.tvdbId==$tvdbId)")"
+  for tvdbId in $(echo "$seriesTvdbId"); do
+      seriesData="$(curl -s --header "X-Api-Key: $arrApiKey" --request GET  "$arrUrl/api/v3/series" | jq -r ".[] | select(.tvdbId==$tvdbId)")"
       seriesId="$(echo "$seriesData" | jq -r .id)"
       seriesTitle="$(echo "$seriesData" | jq -r .title)"
       seriesPath="$(echo "$seriesData" | jq -r .path)"
@@ -71,7 +73,7 @@ InvalidAutoCleanerProcess () {
       log "$seriesId :: $seriesTitle :: $seriesPath :: Removing and deleting invalid Series (tvdbId: $tvdbId) based on Sonarr Health Check error..."
   
       # Send command to Sonarr to delete series and files
-      arrCommand=$(curl -s --header "X-Api-Key:"$arrApiKey --request DELETE "$arrUrl/api/v3/series/$seriesId?deleteFiles=true")
+      arrCommand=$(curl -s --header "X-Api-Key: $arrApiKey" --request DELETE "$arrUrl/api/v3/series/$seriesId?deleteFiles=true")
       
   done
 }
@@ -93,8 +95,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$arrUrl" ]; then
-        if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+        if [ -n "$arrApiKey" ]; then
             InvalidAutoCleanerProcess
         else
             log "ERROR :: Skipping Sonarr, missing API Key..."

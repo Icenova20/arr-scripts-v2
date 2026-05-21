@@ -15,6 +15,7 @@ logfileSetup () {
 
   if [ ! -d "$dockerLogPath" ]; then
     mkdir -p "$dockerLogPath"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath"
     chmod 777 "$dockerLogPath"
   fi
 
@@ -27,14 +28,15 @@ logfileSetup () {
   
   if [ ! -f "$dockerLogPath/$logFileName" ]; then
     echo "" > "$dockerLogPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath/$logFileName"
     chmod 666 "$dockerLogPath/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -57,16 +59,27 @@ UnmappedFolderCleanerProcess () {
 	    log "No cleanup required, exiting..."
 	    return
 	fi
-    unmappedFolders=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r ".[].unmappedFolders[].path")
-	for folder in $(echo "$unmappedFolders"); do
-	    log "Removing $folder"
-		if [ -d "$folder" ]; then
-	    	rm -rf "$folder"
-		else
-			log "ERROR :: Cannot Delete \"$foler\", directory not found, skipping..."
-            log "ERROR :: Check to make sure Radarr root folder is mapped properly to this container..."
-		fi
-	done
+    unmappedFoldersData=$(curl -s "$arrUrl/api/v3/rootFolder" -H "X-Api-Key: $arrApiKey" | jq -r '.[] | .path as $root | .unmappedFolders[]? | "\($root)|\(.path)"')
+	while IFS= read -r data; do
+	    if [ -z "$data" ]; then continue; fi
+	    root_path="${data%|*}"
+	    folder="${data#*|}"
+
+	    real_root=$(realpath "$root_path" 2>/dev/null) || real_root="$root_path"
+	    real_folder=$(realpath "$folder" 2>/dev/null) || real_folder="$folder"
+
+	    if [[ "$real_folder" == "$real_root/"* ]] && [[ "$real_folder" != "$real_root" ]] && [[ "$real_folder" != "/" ]]; then
+	        log "Removing $folder"
+		    if [ -d "$folder" ]; then
+		        rm -rf "${folder:?}"
+		    else
+			    log "ERROR :: Cannot Delete \"$folder\", directory not found, skipping..."
+                log "ERROR :: Check to make sure Sonarr root folder is mapped properly to this container..."
+		    fi
+	    else
+	        log "ERROR :: SECURITY WARNING: \"$folder\" is not a valid sub-directory of \"$root_path\". Skipping deletion."
+	    fi
+	done <<< "$unmappedFoldersData"
 	IFS="$OLDIFS"
  }
 
@@ -89,8 +102,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         UnmappedFolderCleanerProcess
       else
         log "ERROR :: Skipping, missing API Key..."

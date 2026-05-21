@@ -24,6 +24,7 @@ logfileSetup () {
 
   if [ ! -d "$dockerLogPath" ]; then
     mkdir -p "$dockerLogPath"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath"
     chmod 777 "$dockerLogPath"
   fi
 
@@ -36,14 +37,15 @@ logfileSetup () {
   
   if [ ! -f "$dockerLogPath/$logFileName" ]; then
     echo "" > "$dockerLogPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath/$logFileName"
     chmod 666 "$dockerLogPath/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 HuntarrRadarr () {
@@ -79,10 +81,12 @@ HuntarrAPILimitFile () {
     # Create base directory for various functions/process
     if [ ! -d "/config/huntarr" ]; then
         mkdir -p "/config/huntarr" 
+        chown ${PUID:-1000}:${PGID:-1000} "/config/huntarr"
     fi
     apiLimitFile="Huntarr-api-search-count-$(date +"%Y_%m_%d").txt"
     if [ ! -f "/config/huntarr/$apiLimitFile" ]; then
         echo -n "0" > "/config/huntarr/$apiLimitFile"
+        chown ${PUID:-1000}:${PGID:-1000} "/config/huntarr/$apiLimitFile"
     fi
 
     if find "/config/huntarr" -type f -iname "Huntarr-api-search-count-*.txt" | read; then
@@ -199,59 +203,63 @@ HuntarrProcess () {
         # create log folder for searched items
         if [ ! -d "/config/huntarr/$settingsFileName/$arrApp" ]; then
             mkdir -p "/config/huntarr/$settingsFileName/$arrApp"
+            chown ${PUID:-1000}:${PGID:-1000} "/config/huntarr/$settingsFileName/$arrApp"
         fi
 
         # create log of searched item
         if [ ! -f "/config/huntarr/$settingsFileName/$arrApp/$arrItemId" ]; then
             touch "/config/huntarr/$settingsFileName/$arrApp/$arrItemId"
+            chown ${PUID:-1000}:${PGID:-1000} "/config/huntarr/$settingsFileName/$arrApp/$arrItemId"
         fi        
     done
 }
 
 
-for (( ; ; )); do
-  let i++
-  logfileSetup
-  log "Starting..."
-  confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
-  confFileCount=$(echo "$confFiles" | wc -l)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  for (( ; ; )); do
+    let i++
+    logfileSetup
+    log "Starting..."
+    confFiles=$(find /config -mindepth 1 -type f -name "*.conf")
+    confFileCount=$(echo "$confFiles" | wc -l)
 
-  if [ -z "$confFiles" ]; then
-      log "ERROR :: No config files found, exiting..."
-      exit
-  fi
+    if [ -z "$confFiles" ]; then
+        log "ERROR :: No config files found, exiting..."
+        exit
+    fi
 
-  for f in $confFiles; do
-    count=$(($count+1))
-    log "Processing \"$f\" config file"
-    settingsFileName=$(basename "${f%.*}")
-    settings "$f"
-    verifyConfig "$f"
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
-        HuntarrRadarr
-        HuntarrProcess
+    for f in $confFiles; do
+      count=$(($count+1))
+      log "Processing \"$f\" config file"
+      settingsFileName=$(basename "${f%.*}")
+      settings "$f"
+      verifyConfig "$f"
+      if [ -n "$radarrUrl" ]; then
+        if [ -n "$radarrApiKey" ]; then
+          HuntarrRadarr
+          HuntarrProcess
+        else
+          log "ERROR :: Skipping Radarr, missing API Key..."
+        fi
       else
-        log "ERROR :: Skipping Radarr, missing API Key..."
+        log "ERROR :: Skipping Radarr, missing URL..."
       fi
-    else
-      log "ERROR :: Skipping Radarr, missing URL..."
-    fi
-    if [ ! -z "$sonarrUrl" ]; then
-      if [ ! -z "$sonarrApiKey" ]; then
-        HuntarrSonarr
-        HuntarrProcess
+      if [ -n "$sonarrUrl" ]; then
+        if [ -n "$sonarrApiKey" ]; then
+          HuntarrSonarr
+          HuntarrProcess
+        else
+          log "ERROR :: Skipping Sonarr, missing API Key..."
+        fi
       else
-        log "ERROR :: Skipping Sonarr, missing API Key..."
+        log "ERROR :: Skipping Sonarr, missing URL..."
       fi
-    else
-      log "ERROR :: Skipping Sonarr, missing URL..."
-    fi
+    done
+
+    log "Sleeping $huntarrScriptInterval..."
+    sleep $huntarrScriptInterval
+
   done
 
-  log "Sleeping $huntarrScriptInterval..."
-  sleep $huntarrScriptInterval
-
-done
-
-exit
+  exit
+fi

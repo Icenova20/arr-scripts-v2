@@ -22,10 +22,16 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$incompleteDownloadPath" ] || [ "$incompleteDownloadPath" = "/" ] || [ -z "$completeDownloadPath" ] || [ "$completeDownloadPath" = "/" ]; then
+		log "ERROR :: Invalid download paths configured. Prevented potential arbitrary file deletion."
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
+
 }
 
 InstallDependencies () {
-  # Fix: Check for py3-pip specifically. Checking only for python3 can lead to a state where
+  # Note: Check for py3-pip specifically. Checking only for python3 can lead to a state where
   # python is installed but pip is missing, causing the subsequent 'python3 -m pip' commands to fail.
   if apk --no-cache list | grep installed | grep py3-pip | read; then
     log "Dependencies already installed, skipping..."
@@ -53,6 +59,7 @@ ArlSetup () {
     if [ ! -d "$deemixFolder" ]; then
         log "Creating Deemix Config folder"
         mkdir -p "$deemixFolder"
+        chown ${PUID:-1000}:${PGID:-1000} "$deemixFolder"
     fi
     if [ -f "$deemixFolder/.arl" ]; then
         log "Deleting ARL"
@@ -87,13 +94,14 @@ logfileSetup () {
   
   if [ ! -f "$dockerPath/$logFileName" ]; then
     echo "" > "$dockerPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerPath/$logFileName"
     chmod 666 "$dockerPath/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
 }
 
 ArrWaitForTaskCompletion () {
@@ -123,15 +131,15 @@ VerifyApiAccess () {
   do
     arrApiTest=""
     arrApiVersion=""
-    if [ -z "$arrApiTest" ]; then
+    if [ -z "$arrApiTest" ] || [ "$arrApiTest" == "null" ]; then
       arrApiVersion="v3"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ -z "$arrApiTest" ]; then
+    if [ -z "$arrApiTest" ] || [ "$arrApiTest" == "null" ]; then
       arrApiVersion="v1"
       arrApiTest="$(curl -s "$arrUrl/api/$arrApiVersion/system/status?apikey=$arrApiKey" | jq -r .instanceName)"
     fi
-    if [ ! -z "$arrApiTest" ]; then
+    if [ -n "$arrApiTest" ] && [ "$arrApiTest" != "null" ]; then
       break
     else
       if [ "$alerted" == "no" ]; then
@@ -158,7 +166,7 @@ SearchDeezerAlbums () {
         match="$(echo "${lidarrAlbumReleaseTitlesClean,,}" | grep "^${deezerAlbumTitleClean,,}$")"
 
         diff=1
-        if  [ ! -z "$match" ]; then
+        if  [ -n "$match" ]; then
           diff=0
 
           deezerAlbumTrackCount=$(curl -s "https://api.deezer.com/album/$deezerAlbumId" | jq -r .nb_tracks)
@@ -183,14 +191,15 @@ SearchDeezerAlbums () {
   
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: $deezerAlbumTitle :: Explicit Lyrics ($deezerExplicitLyrics) :: Match Found!"
 
-            if [ -d "$incompleteDownloadPath" ]; then
-                rm -rf "$incompleteDownloadPath"
+            if [ -n "$incompleteDownloadPath" ] && [ "$incompleteDownloadPath" != "/" ] && [ -d "$incompleteDownloadPath" ] && [ "$(realpath "$incompleteDownloadPath" 2>/dev/null)" != "/" ]; then
+                rm -rf "${incompleteDownloadPath:?}"
             fi
 
             if [ ! -d "$completeDownloadPath/$downloadAlbumFolderName" ]; then
                 # delete temporary download location if needed
                 if [ ! -d "$incompleteDownloadPath" ]; then
                     mkdir -p "$incompleteDownloadPath"
+                    chown ${PUID:-1000}:${PGID:-1000} "$incompleteDownloadPath"
                 fi
 
                 # download tracks
@@ -199,12 +208,14 @@ SearchDeezerAlbums () {
                 # Create import location
                 if [ ! -d "$completeDownloadPath" ]; then
                     mkdir -p "$completeDownloadPath"
+                    chown ${PUID:-1000}:${PGID:-1000} "$completeDownloadPath"
                     chmod 777 -R "$completeDownloadPath"
                 fi
 
                 # Create import location album folder
                 if [ ! -d "$completeDownloadPath/$downloadAlbumFolderName" ]; then
                     mkdir -p "$completeDownloadPath/$downloadAlbumFolderName"
+                    chown ${PUID:-1000}:${PGID:-1000} "$completeDownloadPath/$downloadAlbumFolderName"
                 fi
 
                 # Move downloaded files to import location album folder
@@ -217,11 +228,12 @@ SearchDeezerAlbums () {
             fi
 
             log "$processNumber of $lidarrTotalRecords :: $lidarrAlbumArtistName :: $lidarrAlbumTitle :: Notifying Lidarr to Import \"$downloadAlbumFolderName\""
-            LidarrProcessIt=$(curl -s "$arrUrl/api/v1/command" --header "X-Api-Key:"${arrApiKey} -H "Content-Type: application/json" --data "{\"name\":\"DownloadedAlbumsScan\", \"path\":\"$completeDownloadPath/$downloadAlbumFolderName\"}")
+            LidarrProcessIt=$(curl -s "$arrUrl/api/v1/command" --header "X-Api-Key: $arrApiKey" -H "Content-Type: application/json" --data "{\"name\":\"DownloadedAlbumsScan\", \"path\":\"$completeDownloadPath/$downloadAlbumFolderName\"}")
             touch /config/found
 
             if [ ! -d "$completedSearchIdLocation" ]; then
                 mkdir -p "$completedSearchIdLocation"
+                chown ${PUID:-1000}:${PGID:-1000} "$completedSearchIdLocation"
                 chmod 777 -R "$completedSearchIdLocation"
             fi
 
@@ -321,6 +333,7 @@ LidarrWantedSearch () {
 
         if [ ! -d "$completedSearchIdLocation" ]; then
             mkdir -p "$completedSearchIdLocation"
+            chown ${PUID:-1000}:${PGID:-1000} "$completedSearchIdLocation"
             chmod 777 -R "$completedSearchIdLocation"
         fi
 
@@ -360,15 +373,15 @@ for (( ; ; )); do
     settings "$f"
     verifyConfig
 
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         SECONDS=0        
         VerifyApiAccess
         ArlSetup
 
         log "Step - Removing previously downloaded items that failed to import..."
-        if [ -d "$completeDownloadPath" ]; then
-            rm -rf "$completeDownloadPath"/*
+        if [ -n "$completeDownloadPath" ] && [ "$completeDownloadPath" != "/" ] && [ -d "$completeDownloadPath" ] && [ "$(realpath "$completeDownloadPath" 2>/dev/null)" != "/" ]; then
+            rm -rf "${completeDownloadPath:?}"/*
         fi
 
         log "Step - Begining Missing search!"

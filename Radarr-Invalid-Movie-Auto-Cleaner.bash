@@ -15,6 +15,7 @@ logfileSetup () {
 
   if [ ! -d "$dockerLogPath" ]; then
     mkdir -p "$dockerLogPath"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath"
     chmod 777 "$dockerLogPath"
   fi
 
@@ -27,14 +28,15 @@ logfileSetup () {
   
   if [ ! -f "$dockerLogPath/$logFileName" ]; then
     echo "" > "$dockerLogPath/$logFileName"
+    chown ${PUID:-1000}:${PGID:-1000} "$dockerLogPath/$logFileName"
     chmod 666 "$dockerLogPath/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1 >> "$dockerLogPath/$logFileName"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1" >> "$dockerLogPath/$logFileName"
 }
 
 verifyConfig () {
@@ -50,7 +52,7 @@ verifyConfig () {
 InvalidMovieAutoCleanerProcess () {
   
     # Get invalid series tmdbid id's
-    movieTmdbid="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/health" | jq -r '.[] | select(.source=="RemovedMovieCheck") | select(.type=="error")' | grep -o 'tmdbid [0-9]*' | grep -o '[[:digit:]]*')"
+    movieTmdbid="$(curl -s --header "X-Api-Key: $arrApiKey" --request GET  "$arrUrl/api/v3/health" | jq -r '.[] | select(.source=="RemovedMovieCheck") | select(.type=="error")' | grep -o 'tmdbid [0-9]*' | grep -o '[[:digit:]]*')"
    
     if [ -z "$movieTmdbid" ]; then
         log "No invalid movies (tmdbid) reported by Radarr health check, skipping..."
@@ -59,8 +61,8 @@ InvalidMovieAutoCleanerProcess () {
 
   
     # Process each invalid series tmdb id
-    moviesData="$(curl -s --header "X-Api-Key:"$arrApiKey --request GET  "$arrUrl/api/v3/movie")"
-    for tmdbid in $(echo $movieTmdbid); do
+    moviesData="$(curl -s --header "X-Api-Key: $arrApiKey" --request GET  "$arrUrl/api/v3/movie")"
+    for tmdbid in $(echo "$movieTmdbid"); do
         movieData="$(echo "$moviesData" | jq -r ".[] | select(.tmdbId==$tmdbid)")"
         movieId="$(echo "$movieData" | jq -r .id)"
         movieTitle="$(echo "$movieData" | jq -r .title)"
@@ -68,7 +70,7 @@ InvalidMovieAutoCleanerProcess () {
       
         log "$movieId :: $movieTitle :: $moviePath :: Removing and deleting invalid movie (tmdbid: $tmdbid) based on Radarr Health Check error..."
         # Send command to Sonarr to delete series and files
-        arrCommand=$(curl -s --header "X-Api-Key:"$arrApiKey --request DELETE "$arrUrl/api/v3/movie/$movieId?deleteFiles=true")
+        arrCommand=$(curl -s --header "X-Api-Key: $arrApiKey" --request DELETE "$arrUrl/api/v3/movie/$movieId?deleteFiles=true")
       
     done
 
@@ -91,8 +93,8 @@ for (( ; ; )); do
     log "Processing \"$f\" config file"
     settings "$f"
     verifyConfig
-    if [ ! -z "$radarrUrl" ]; then
-      if [ ! -z "$radarrApiKey" ]; then
+    if [ -n "$radarrUrl" ]; then
+      if [ -n "$radarrApiKey" ]; then
         InvalidMovieAutoCleanerProcess
       else
         log "ERROR :: Skipping Radarr, missing API Key..."

@@ -4,7 +4,7 @@ scriptName="Lidarr-MusicVideoAutomator"
 dockerPath="/config"
 arrApp="Lidarr"
 InstallDependencies () {
-  if apk --no-cache list | grep installed | grep ffmpeg | read; then
+  if apk --no-cache list | grep installed | grep py3-pip | read; then
     log "Dependencies already installed, skipping..."
   else
     log "Installing script dependencies...."
@@ -14,10 +14,12 @@ InstallDependencies () {
         jq \
         xq \
         libstdc++ \
-        mkvtoolnix
+        mkvtoolnix \
+        python3 \
+        py3-pip
     log "done"
     apk add atomicparsley --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
-    python3 -m pip install tidal-dl-ng --upgrade --break-system-packages
+    python3 -m pip install tidal-dl-ng-For-DJ --upgrade --break-system-packages
   fi
 }
 
@@ -27,8 +29,8 @@ ConfigureTidalDl () {
     tidal-dl-ng cfg format_video "{track_title}"
     tidal-dl-ng cfg path_binary_ffmpeg /usr/bin/ffmpeg
     tidal-dl-ng cfg download_base_path "$lidarrMusicVideoTempDownloadPath"
-    if [ -f /root/.config/tidal_dl_ng/token.json ]; then
-        if cat "/root/.config/tidal_dl_ng/token.json" | grep "null" | read;  then 
+    if [ -f /root/.config/tidal_dl_ng-dev/token.json ]; then
+        if cat "/root/.config/tidal_dl_ng-dev/token.json" | grep "null" | read;  then 
             log "tidal-dl-ng requires authentication, authenticate now:"
             log "login manually using the following command: tidal-dl-ng login"
             tidalFailure="true"
@@ -50,6 +52,16 @@ verifyConfig () {
 		sleep infinity
 	fi
 
+	if [ -z "$lidarrMusicVideoTempDownloadPath" ] || [ "$lidarrMusicVideoTempDownloadPath" = "/" ]; then
+		log "ERROR :: lidarrMusicVideoTempDownloadPath is not properly configured. It must be set and cannot be the root directory."
+		exit 1
+	fi
+
+	if [ -z "$tidalToken" ]; then
+		log "Script requires tidalToken to be set in settings.conf"
+		log "Sleeping (infinity)"
+		sleep infinity
+	fi
 }
 
 settings () {
@@ -71,13 +83,14 @@ logfileSetup () {
   
   if [ ! -f "$dockerPath/logs/$logFileName" ]; then
     echo "" > "$dockerPath/logs/$logFileName"
+  chown ${PUID:-1000}:${PGID:-1000} "$dockerPath/logs/$logFileName"
     chmod 666 "$dockerPath/logs/$logFileName"
   fi
 }
 
 log () {
   m_time=`date "+%F %T"`
-  echo $m_time" :: $scriptName (v$scriptVersion) :: "$1
+  echo "$m_time :: $scriptName (v$scriptVersion) :: $1"
 }
 
 TagMP4 () {
@@ -91,7 +104,7 @@ TagMP4 () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -162,7 +175,7 @@ RemuxToMKV () {
         ThumbnailDownloader
 
         genre=""
-        if [ ! -z "$lidarrArtistGenres" ]; then
+        if [ -n "$lidarrArtistGenres" ]; then
             for genre in ${!lidarrArtistGenres[@]}; do
                 artistGenre="${lidarrArtistGenres[$genre]}"
                 OUT=$OUT"$artistGenre / "
@@ -205,12 +218,14 @@ CompletedFileMover () {
     if [ ! -d "$lidarrMusicVideoLibrary" ]; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Library Folder"
         mkdir -p "$lidarrMusicVideoLibrary"
+        chown ${PUID:-1000}:${PGID:-1000} "$lidarrMusicVideoLibrary"
         chmod 777 "$lidarrMusicVideoLibrary"
     fi
 
     if [ ! -d "$lidarrMusicVideoLibrary/$lidarrArtistFolder" ]; then
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating Artist Folder: $lidarrArtistFolder"
         mkdir -p "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
+        chown ${PUID:-1000}:${PGID:-1000} "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
         chmod 777 "$lidarrMusicVideoLibrary/$lidarrArtistFolder"
     fi
 
@@ -258,8 +273,8 @@ CompletedFileMover () {
 
 DownloadVideo () {
     videoUnavailable="false"
-    if [ -d "$lidarrMusicVideoTempDownloadPath" ]; then
-        rm -rf "$lidarrMusicVideoTempDownloadPath"/*
+    if [ -n "$lidarrMusicVideoTempDownloadPath" ] && [ "$lidarrMusicVideoTempDownloadPath" != "/" ] && [ -d "$lidarrMusicVideoTempDownloadPath" ] && [ "$(realpath "$lidarrMusicVideoTempDownloadPath" 2>/dev/null)" != "/" ]; then
+        rm -rf "${lidarrMusicVideoTempDownloadPath:?}"/*
     fi
     log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Downloading Video..."
     if tidal-dl-ng dl "$1" | grep "Media not found" | read; then
@@ -297,7 +312,7 @@ NfoWriter () {
     echo "	<userrating/>" >> "$nfo"
     echo "	<track/>" >> "$nfo"
     echo "	<studio/>" >> "$nfo"
-    if [ ! -z "$lidarrArtistGenres" ]; then
+    if [ -n "$lidarrArtistGenres" ]; then
         for genre in ${!lidarrArtistGenres[@]}; do
             artistGenre="${lidarrArtistGenres[$genre]}"
             echo "	<genre>$artistGenre</genre>" >> "$nfo"
@@ -328,8 +343,8 @@ NfoWriter () {
 
 tidalProcess () {
     tidalArtistId=$1
-    # curl -s "https://api.tidal.com/v1/artists/14123/videos?countryCode=US&offset=0&limit=1000" -H "x-tidal-token: CzET4vdadNUFQ5JU" | jq -r
-    vidoesData=$(curl -s "https://api.tidal.com/v1/artists/${tidalArtistId}/videos?countryCode=${tidalCountryCode}&offset=0&limit=1000" -H "x-tidal-token: CzET4vdadNUFQ5JU")
+    # curl -s "https://api.tidal.com/v1/artists/14123/videos?countryCode=US&offset=0&limit=1000" -H "x-tidal-token: ${tidalToken}" | jq -r
+    vidoesData=$(curl -s "https://api.tidal.com/v1/artists/${tidalArtistId}/videos?countryCode=${tidalCountryCode}&offset=0&limit=1000" -H "x-tidal-token: ${tidalToken}")
     videoIds="$(echo "$vidoesData" | jq -r ".items | sort_by(.releaseDate) | reverse | .[].id")"
     videoIdsCount=$(echo "$videoIds" | wc -l)
     videoIdProcess=0
@@ -339,7 +354,7 @@ tidalProcess () {
         videoTitle="$(echo "$videoData" | jq -r .title)"
         videoArtist="$(echo "$videoData" | jq -r .artist.name)"
         videoMainArtistId="$(echo "$videoData" | jq -r .artist.id)"
-        videoExplicit=$(echo $videoData | jq -r .explicit)
+        videoExplicit=$(echo "$videoData" | jq -r .explicit)
         videoDate="$(echo "$videoData" | jq -r ".releaseDate")"
         videoDate="${videoDate:0:10}"
         videoYear="${videoDate:0:4}"
@@ -428,9 +443,6 @@ tidalProcess () {
         fi        
         
         log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Processing..."
-        #echo "$videoThumbnailUrl"
-        #echo "$videoArtists"
-        #echo "$videoData" | jq -r
         
         DownloadVideo "https://tidal.com/video/$videoId"
         
@@ -454,6 +466,7 @@ tidalProcess () {
         if [ ! -d "$logFolder" ]; then
             log "$processCount/$lidarrArtistCount :: $lidarrArtistName :: $videoIdProcess/$videoIdsCount :: $videoArtist :: $videoYear :: $videoType :: $videoTitle :: Creating log folder: $logFolder"
             mkdir -p "$logFolder"
+            chown ${PUID:-1000}:${PGID:-1000} "$logFolder"
             chmod 777 "$logFolder"
         fi
 
@@ -490,17 +503,17 @@ for (( ; ; )); do
     if [ "$tidalFailure" = "true" ]; then
         exit
     fi
-    if [ ! -z "$arrUrl" ]; then
-      if [ ! -z "$arrApiKey" ]; then
+    if [ -n "$arrUrl" ]; then
+      if [ -n "$arrApiKey" ]; then
         lidarrArtists=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist?apikey=$arrApiKey" | jq -r .[])
-        lidarrArtistIds=$(echo $lidarrArtists | jq -r .id)
+        lidarrArtistIds=$(echo "$lidarrArtists" | jq -r .id)
         lidarrArtistCount=$(echo "$lidarrArtistIds" | wc -l)
         processCount=0
-        for lidarrArtistId in $(echo $lidarrArtistIds); do
+        for lidarrArtistId in $(echo "$lidarrArtistIds"); do
             processCount=$(( $processCount + 1))
             lidarrArtistData=$(wget --timeout=0 -q -O - "$arrUrl/api/v1/artist/$lidarrArtistId?apikey=$arrApiKey")
-            lidarrArtistName=$(echo $lidarrArtistData | jq -r .artistName)
-            lidarrArtistMusicbrainzId=$(echo $lidarrArtistData | jq -r .foreignArtistId)
+            lidarrArtistName=$(echo "$lidarrArtistData" | jq -r .artistName)
+            lidarrArtistMusicbrainzId=$(echo "$lidarrArtistData" | jq -r .foreignArtistId)
             lidarrArtistPath="$(echo "${lidarrArtistData}" | jq -r " .path")"
             lidarrArtistFolder="$(basename "${lidarrArtistPath}" | cut -d "(" -f 1)"
             lidarrArtistFolder="$(echo "$lidarrArtistFolder" | sed 's/^[ \t]*//;s/[ \t]*$//')"
