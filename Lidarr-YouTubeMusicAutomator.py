@@ -64,7 +64,7 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
     
     # Download to temporary directory first
     temp_output_template = os.path.join(temp_download_dir, f"{track_num_padded} - {sanitized_title}.%(ext)s")
-    search_query = f"ytsearch1:{artist} - {track_title}"
+    search_query = f"ytsearch1:{artist} - {track_title} (Official Audio)"
     
     log(f"Starting download: {artist} - {track_title} (Track {track_num_padded})")
     
