@@ -49,13 +49,21 @@ def sanitize_name(name):
     return re.sub(r'[\\/*?:"<>|]', "_", str(name)).strip()
 
 def run_download(artist, album, track_num, track_title, output_dir, cookies_path):
-    os.makedirs(output_dir, exist_ok=True)
+    import shutil
+    temp_download_dir = "/tmp/yt_download"
+    if os.path.exists(temp_download_dir):
+        try:
+            shutil.rmtree(temp_download_dir)
+        except Exception:
+            pass
+    os.makedirs(temp_download_dir, exist_ok=True)
     
     # Pad track number
     track_num_padded = str(track_num).zfill(2)
     sanitized_title = sanitize_name(track_title)
     
-    output_template = os.path.join(output_dir, f"{track_num_padded} - {sanitized_title}.%(ext)s")
+    # Download to temporary directory first
+    temp_output_template = os.path.join(temp_download_dir, f"{track_num_padded} - {sanitized_title}.%(ext)s")
     search_query = f"ytsearch1:{artist} - {track_title}"
     
     log(f"Starting download: {artist} - {track_title} (Track {track_num_padded})")
@@ -63,20 +71,18 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
     cmd = [
         "yt-dlp",
         "-f", "ba[ext=m4a]/ba",
-        "-o", output_template,
+        "-o", temp_output_template,
         "--extract-audio",
         "--audio-format", "m4a",
         "--no-playlist",
         "--embed-metadata",
         "--embed-thumbnail",
-        "--sponsorblock-remove", "music_offtopic",
         "--js-runtimes", "node",
         "--remote-components", "ejs:github",
         search_query
     ]
     
     if os.path.exists(cookies_path):
-        import shutil
         temp_cookies_path = "/tmp/cookies.txt"
         try:
             shutil.copy2(cookies_path, temp_cookies_path)
@@ -90,11 +96,50 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
         
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        log(f"Successfully downloaded: {track_num_padded} - {sanitized_title}")
-        return True
+        
+        # Once successfully downloaded, find the file in temp_download_dir and move it to final output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        expected_filename = f"{track_num_padded} - {sanitized_title}.m4a"
+        temp_file_path = os.path.join(temp_download_dir, expected_filename)
+        final_file_path = os.path.join(output_dir, expected_filename)
+        
+        puid = int(os.environ.get("PUID", 1000))
+        pgid = int(os.environ.get("PGID", 1000))
+        
+        if os.path.exists(temp_file_path):
+            shutil.move(temp_file_path, final_file_path)
+            try:
+                os.chown(final_file_path, puid, pgid)
+                os.chmod(final_file_path, 0o666)
+            except Exception as pe:
+                log(f"WARNING: Failed to set ownership on {final_file_path}: {pe}")
+            log(f"Successfully downloaded and moved to destination: {expected_filename}")
+            return True
+        else:
+            # Fallback if filename matched differently
+            files = [f for f in os.listdir(temp_download_dir) if f.endswith(".m4a")]
+            if files:
+                found_file = os.path.join(temp_download_dir, files[0])
+                shutil.move(found_file, final_file_path)
+                try:
+                    os.chown(final_file_path, puid, pgid)
+                    os.chmod(final_file_path, 0o666)
+                except Exception as pe:
+                    log(f"WARNING: Failed to set ownership on {final_file_path}: {pe}")
+                log(f"Successfully downloaded and moved to destination (fallback match): {expected_filename}")
+                return True
+            else:
+                log(f"ERROR: Download completed but no .m4a file found in temp directory!")
+                return False
     except subprocess.CalledProcessError as e:
         log(f"ERROR downloading track '{track_title}': {e.stderr.strip()}")
         return False
+    finally:
+        # Cleanup temp directory
+        try:
+            shutil.rmtree(temp_download_dir, ignore_errors=True)
+        except Exception:
+            pass
 
 def main():
     log("Starting YouTube Music Automator execution loop...")
