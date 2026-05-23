@@ -110,6 +110,20 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
         if os.path.exists(temp_file_path):
             shutil.move(temp_file_path, final_file_path)
             try:
+                from mutagen.mp4 import MP4
+                audio = MP4(final_file_path)
+                audio["\xa9nam"] = [track_title]
+                audio["\xa9ART"] = [artist]
+                audio["\xa9alb"] = [album]
+                try:
+                    audio["trkn"] = [(int(track_num), 0)]
+                except Exception:
+                    pass
+                audio.save()
+                log(f"Successfully embedded perfect mutagen tags for: {track_title}")
+            except Exception as me:
+                log(f"WARNING: Failed to write mutagen tags: {me}")
+            try:
                 os.chown(final_file_path, puid, pgid)
                 os.chmod(final_file_path, 0o666)
                 # Ensure the parent directory is owned by PUID/PGID with read/write/delete access for Lidarr
@@ -125,6 +139,20 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
             if files:
                 found_file = os.path.join(temp_download_dir, files[0])
                 shutil.move(found_file, final_file_path)
+                try:
+                    from mutagen.mp4 import MP4
+                    audio = MP4(final_file_path)
+                    audio["\xa9nam"] = [track_title]
+                    audio["\xa9ART"] = [artist]
+                    audio["\xa9alb"] = [album]
+                    try:
+                        audio["trkn"] = [(int(track_num), 0)]
+                    except Exception:
+                        pass
+                    audio.save()
+                    log(f"Successfully embedded perfect mutagen tags (fallback): {track_title}")
+                except Exception as me:
+                    log(f"WARNING: Failed to write mutagen tags (fallback): {me}")
                 try:
                     os.chown(final_file_path, puid, pgid)
                     os.chmod(final_file_path, 0o666)

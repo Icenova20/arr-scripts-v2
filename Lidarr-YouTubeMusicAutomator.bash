@@ -35,11 +35,11 @@ InstallDependencies () {
   fi
 
   # Verify if requirements are already installed
-  if pip3 show yt-dlp >/dev/null 2>&1 && pip3 show requests >/dev/null 2>&1; then
+  if pip3 show yt-dlp >/dev/null 2>&1 && pip3 show requests >/dev/null 2>&1 && pip3 show mutagen >/dev/null 2>&1; then
     log "Dependencies already installed, skipping..."
   else
     log "Installing python script dependencies...."
-    python3 -m pip install yt-dlp requests --upgrade --break-system-packages
+    python3 -m pip install yt-dlp requests mutagen --upgrade --break-system-packages
     log "done."
   fi
 }
