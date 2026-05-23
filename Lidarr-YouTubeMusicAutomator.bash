@@ -65,7 +65,7 @@ for (( ; ; )); do
   InstallDependencies
   
   # Run the Python core engine
-  python3 "/custom-services.d/Lidarr-YouTubeMusicAutomator.py"
+  python3 "/config/Lidarr-YouTubeMusicAutomator.py"
   
   interval=${lidarrYouTubeMusicAutomatorInterval:-"1h"}
   log "Cycle complete. Sleeping for $interval..."
