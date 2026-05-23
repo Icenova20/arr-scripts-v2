@@ -77,6 +77,7 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
         "--no-playlist",
         "--embed-metadata",
         "--embed-thumbnail",
+        "--progress",
         "--js-runtimes", "node",
         "--remote-components", "ejs:github",
         search_query
@@ -95,7 +96,7 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
         log(f"WARNING: Cookies file not found at {cookies_path}, proceeding without cookies...")
         
     try:
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        result = subprocess.run(cmd, check=True)
         
         # Once successfully downloaded, find the file in temp_download_dir and move it to final output_dir
         os.makedirs(output_dir, exist_ok=True)
@@ -132,7 +133,7 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
                 log(f"ERROR: Download completed but no .m4a file found in temp directory!")
                 return False
     except subprocess.CalledProcessError as e:
-        log(f"ERROR downloading track '{track_title}': {e.stderr.strip()}")
+        log(f"ERROR downloading track '{track_title}': yt-dlp exited with non-zero status.")
         return False
     finally:
         # Cleanup temp directory
