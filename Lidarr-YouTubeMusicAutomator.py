@@ -112,8 +112,11 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
             try:
                 os.chown(final_file_path, puid, pgid)
                 os.chmod(final_file_path, 0o666)
+                # Ensure the parent directory is owned by PUID/PGID with read/write/delete access for Lidarr
+                os.chown(output_dir, puid, pgid)
+                os.chmod(output_dir, 0o777)
             except Exception as pe:
-                log(f"WARNING: Failed to set ownership on {final_file_path}: {pe}")
+                log(f"WARNING: Failed to set ownership on final path: {pe}")
             log(f"Successfully downloaded and moved to destination: {expected_filename}")
             return True
         else:
@@ -125,8 +128,11 @@ def run_download(artist, album, track_num, track_title, output_dir, cookies_path
                 try:
                     os.chown(final_file_path, puid, pgid)
                     os.chmod(final_file_path, 0o666)
+                    # Ensure the parent directory is owned by PUID/PGID with read/write/delete access for Lidarr
+                    os.chown(output_dir, puid, pgid)
+                    os.chmod(output_dir, 0o777)
                 except Exception as pe:
-                    log(f"WARNING: Failed to set ownership on {final_file_path}: {pe}")
+                    log(f"WARNING: Failed to set ownership on final path (fallback): {pe}")
                 log(f"Successfully downloaded and moved to destination (fallback match): {expected_filename}")
                 return True
             else:
@@ -201,7 +207,15 @@ def main():
             log("No missing tracks for this album. Skipping.")
             continue
             
-        album_complete_dir = os.path.join(download_base, "complete", f"{sanitize_name(artist_name)} - {sanitize_name(album_title)}")
+        # Extract the release year from Lidarr's metadata so that the folder parses correctly
+        release_date = album.get("releaseDate", "")
+        album_year = release_date[:4] if (release_date and len(release_date) >= 4) else ""
+        if album_year:
+            album_folder_name = f"{sanitize_name(artist_name)} - {sanitize_name(album_title)} ({album_year})"
+        else:
+            album_folder_name = f"{sanitize_name(artist_name)} - {sanitize_name(album_title)}"
+        
+        album_complete_dir = os.path.join(download_base, "complete", album_folder_name)
         
         downloaded_any = False
         for track in missing_tracks:
