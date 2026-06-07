@@ -191,24 +191,43 @@ def main():
     lidarr_api_key = settings.get("lidarrApiKey", "")
     cookies_path = settings.get("youtubeCookiesPath", "/config/cookies.txt")
     download_base = settings.get("youtubeDownloadPath", "/downloads/youtube")
+    completed_search_path = settings.get("completedSearchIdLocation", "/config/lidarr/searched")
     
     if not lidarr_api_key:
         log("ERROR: lidarrApiKey is missing in settings.conf! Exiting.")
         sys.exit(1)
         
-    # 2. Get wanted/missing albums from Lidarr
+    # 2. Get wanted/missing and wanted/cutoff albums from Lidarr
     log("Fetching wanted/missing albums list from Lidarr...")
-    url = f"{lidarr_url}/api/v1/wanted/missing?page=1&pagesize=100&apikey={lidarr_api_key}"
+    missing_url = f"{lidarr_url}/api/v1/wanted/missing?page=1&pagesize=999999&apikey={lidarr_api_key}"
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(missing_url, timeout=30)
         response.raise_for_status()
-        missing_data = response.json()
+        missing_records = response.json().get("records", [])
     except Exception as e:
-        log(f"ERROR connecting to Lidarr API: {e}")
-        sys.exit(1)
+        log(f"ERROR connecting to Lidarr wanted/missing API: {e}")
+        missing_records = []
         
-    records = missing_data.get("records", [])
-    log(f"Found {len(records)} missing album(s) to process.")
+    log("Fetching wanted/cutoff unmet albums list from Lidarr...")
+    cutoff_url = f"{lidarr_url}/api/v1/wanted/cutoff?page=1&pagesize=999999&apikey={lidarr_api_key}"
+    try:
+        response = requests.get(cutoff_url, timeout=30)
+        response.raise_for_status()
+        cutoff_records = response.json().get("records", [])
+    except Exception as e:
+        log(f"ERROR connecting to Lidarr wanted/cutoff API: {e}")
+        cutoff_records = []
+        
+    # Merge and deduplicate records by album ID
+    seen_ids = set()
+    records = []
+    for r in missing_records + cutoff_records:
+        album_id = r.get("id")
+        if album_id and album_id not in seen_ids:
+            seen_ids.add(album_id)
+            records.append(r)
+            
+    log(f"Found {len(records)} unique missing/cutoff album(s) to process.")
     
     for album in records:
         artist_name = album.get("artist", {}).get("artistName", "Unknown Artist")
@@ -216,6 +235,30 @@ def main():
         album_id = album.get("id")
         
         log(f"--- Processing Album: {artist_name} - {album_title} (ID: {album_id}) ---")
+        
+        # Check cache to prevent duplicate downloading loops
+        cache_file = os.path.join(completed_search_path, f"youtube-{album_id}")
+        if os.path.exists(cache_file):
+            log(f"Album already successfully downloaded and processed in a previous cycle (ID: {album_id}). Skipping.")
+            continue
+            
+        # Check failed cache with cooldown (7 days)
+        failed_cache_file = os.path.join(completed_search_path, f"youtube-failed-{album_id}")
+        if os.path.exists(failed_cache_file):
+            try:
+                with open(failed_cache_file, "r") as f:
+                    ts_str = f.read().strip()
+                cached_time = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                time_diff = datetime.now() - cached_time
+                if time_diff.total_seconds() < 7 * 24 * 3600:  # 7 days in seconds
+                    days_left = 7 - (time_diff.total_seconds() / (24 * 3600))
+                    log(f"Album previously searched but no match found. On cooldown for another {days_left:.1f} days. Skipping.")
+                    continue
+                else:
+                    log(f"Failed search cooldown expired for album ID {album_id}. Retrying search...")
+                    os.remove(failed_cache_file)
+            except Exception as e:
+                log(f"WARNING: Error reading failed cache file: {e}. Proceeding with search.")
         
         # 3. Get track list for the album
         track_url = f"{lidarr_url}/api/v1/track?albumId={album_id}&apikey={lidarr_api_key}"
@@ -273,10 +316,33 @@ def main():
                 cmd_response = requests.post(cmd_url, json=payload, timeout=30)
                 cmd_response.raise_for_status()
                 log(f"Successfully triggered scan command for path: {album_complete_dir}")
+                
+                # Write cache file to prevent duplicate downloading loops
+                try:
+                    os.makedirs(completed_search_path, exist_ok=True)
+                    with open(cache_file, "w") as f:
+                        f.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    os.chmod(cache_file, 0o777)
+                    log(f"Marked album {album_id} as processed in cache: {cache_file}")
+                    
+                    # Clean up failed cache if it exists since it's now successful
+                    if os.path.exists(failed_cache_file):
+                        os.remove(failed_cache_file)
+                except Exception as ce:
+                    log(f"WARNING: Failed to write cache file: {ce}")
             except Exception as e:
                 log(f"ERROR triggering Lidarr scan: {e}")
         else:
             log(f"No tracks were successfully downloaded for {artist_name} - {album_title}.")
+            # Write to failed cache with cooldown
+            try:
+                os.makedirs(completed_search_path, exist_ok=True)
+                with open(failed_cache_file, "w") as f:
+                    f.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                os.chmod(failed_cache_file, 0o777)
+                log(f"Marked album {album_id} as failed search. Cooldown initiated: {failed_cache_file}")
+            except Exception as ce:
+                log(f"WARNING: Failed to write failed cache file: {ce}")
 
     log("Execution loop completed.")
 
